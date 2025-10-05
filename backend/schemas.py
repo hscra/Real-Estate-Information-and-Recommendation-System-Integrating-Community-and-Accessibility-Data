@@ -1,6 +1,9 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 
+class PricePoint(BaseModel):
+    date: str
+    price: float
 
 class ListingOut(BaseModel):
     listing_id: str
@@ -19,7 +22,7 @@ class ListingOut(BaseModel):
     has_elevator: Optional[bool]
     has_security: Optional[bool]
     has_storage_room: Optional[bool]
-
+    price_history: Optional[List[PricePoint]] = None 
 
     class Config:
         from_attributes = True
@@ -29,4 +32,3 @@ class ListingsResponse(BaseModel):
     page: int
     page_size: int
     total: int
-
