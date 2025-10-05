@@ -1,4 +1,4 @@
-from sqlalchemy import select, and_, or_, func
+from sqlalchemy import select, and_, or_, func, MetaData, Table
 from sqlalchemy.orm import Session
 from typing import Sequence, Tuple
 from .models import Listing
@@ -93,3 +93,37 @@ def search_listings(
 
 
     return rows, total
+
+
+def fetch_price_histories(db, listing_ids: list[str]) -> dict[str, list[dict]]:
+    """Fetch price histories for listing_ids and sort them by snapshot_date in Python."""
+    if not listing_ids:
+        return {}
+
+    meta = MetaData(schema="realestate")
+    fact = Table("fact_listings", meta, autoload_with=db.bind)
+
+    q = (
+        select(
+            fact.c.listing_id,
+            func.json_agg(
+                func.json_build_object(
+                    "date", fact.c.snapshot_date,
+                    "price", fact.c.price
+                )
+            ).label("hist")
+        )
+        .where(fact.c.listing_id.in_(listing_ids))
+        .group_by(fact.c.listing_id)
+    )
+
+    rows = db.execute(q).all()
+
+    out: dict[str, list[dict]] = {}
+    for lid, hist in rows:
+        # hist is a Python list of dicts (date, price) or None
+        seq = hist or []
+        # Sort by "date" key ascending (YYYY-MM-DD strings sort correctly)
+        seq.sort(key=lambda d: d.get("date"))
+        out[lid] = seq
+    return out
