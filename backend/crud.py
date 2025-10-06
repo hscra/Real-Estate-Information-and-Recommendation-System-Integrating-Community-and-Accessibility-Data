@@ -2,6 +2,7 @@ from sqlalchemy import select, and_, or_, func, MetaData, Table
 from sqlalchemy.orm import Session
 from typing import Sequence, Tuple
 from .models import Listing
+from .settings import settings
 
 
 AMENITY_MAP = {
@@ -70,6 +71,7 @@ def search_listings(
     page: int,
     page_size: int,
     sort: str | None,
+    
 ) -> Tuple[Sequence[Listing], int]:
     filters = build_filters(city, type_, min_m2, max_m2, min_price, max_price, rooms, amenities)
 
@@ -127,3 +129,93 @@ def fetch_price_histories(db, listing_ids: list[str]) -> dict[str, list[dict]]:
         seq.sort(key=lambda d: d.get("date"))
         out[lid] = seq
     return out
+
+def reflect_fact_table(db: Session):
+    meta = MetaData(schema=settings.SCHEMA)
+    fact = Table("fact_listings", meta, autoload_with=db.bind)
+    return fact
+
+def apply_bbox_filter(q, fact, south, west, north, east):
+    """Use PostGIS ST_Intersects against an envelope; falls back to lat/lon if geom missing."""
+    if None in (south, west, north, east):
+        return q
+    envelope = func.ST_MakeEnvelope(west, south, east, north, 4326)
+    return q.where(func.ST_Intersects(fact.c.geom, envelope))
+
+def apply_radius_filter(q, fact, lat, lng, radius_m):
+    """Filter within radius_m meters of (lat, lng). Returns (query, distance_expr or None)."""
+    if None in (lat, lng, radius_m):
+        return q, None
+    user_pt = func.ST_SetSRID(func.ST_MakePoint(lng, lat), 4326)  # SRID 4326
+    # geography distance in meters (geom is geography)
+    dist = func.ST_Distance(fact.c.geom, user_pt)
+    q = q.where(func.ST_DWithin(fact.c.geom, user_pt, radius_m))
+    return q, dist
+
+def search_listings(
+    db: Session,
+    *,
+    city: str | None,
+    type_: str | None,
+    min_m2: float | None,
+    max_m2: float | None,
+    min_price: float | None,
+    max_price: float | None,
+    rooms: int | None,
+    amenities: list[str] | None,
+    page: int,
+    page_size: int,
+    sort: str | None,
+
+    # NEW geo params
+    bbox_south: float | None = None,
+    bbox_west: float | None = None,
+    bbox_north: float | None = None,
+    bbox_east: float | None = None,
+    lat: float | None = None,
+    lng: float | None = None,
+    radius_m: int | None = None,
+):
+    # Base: select from v_latest_listings
+    base = select(Listing)
+
+    # Build attribute filters (your existing build_filters is fine — call it here)
+    filters = build_filters(city, type_, min_m2, max_m2, min_price, max_price, rooms, amenities)
+    if filters is not None:
+        base = base.where(filters)
+
+    # Geo: only if enabled and any geo param present
+    distance_expr = None
+    if settings.USE_POSTGIS and any(v is not None for v in (bbox_south, bbox_west, bbox_north, bbox_east, lat, lng, radius_m)):
+        fact = reflect_fact_table(db)
+        # join on listing_id
+        base = base.join(fact, fact.c.listing_id == Listing.listing_id)
+
+        # bbox
+        if None not in (bbox_south, bbox_west, bbox_north, bbox_east):
+            base = apply_bbox_filter(base, fact, bbox_south, bbox_west, bbox_north, bbox_east)
+
+        # radius
+        if None not in (lat, lng, radius_m):
+            base, distance_expr = apply_radius_filter(base, fact, lat, lng, radius_m)
+            # expose computed distance if you want (example):
+            # base = base.add_columns(distance_expr.label("distance_m"))
+
+    # Count total (wrap the selectable)
+    total = db.execute(select(func.count()).select_from(base.subquery())).scalar_one()
+
+    # Sorting
+    if sort == "distance_asc" and distance_expr is not None:
+        order_clause = distance_expr.asc()
+    else:
+        order_clause = SORT_MAP.get(sort or "", SORT_MAP["recent"])
+
+    rows = (
+        db.execute(
+            base.order_by(order_clause)
+                .offset((page - 1) * page_size)
+                .limit(page_size)
+        ).scalars().all()
+    )
+
+    return rows, total

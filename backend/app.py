@@ -24,6 +24,15 @@ def list_listings(
     max_price: Optional[float] = None,
     rooms: Optional[int] = None,
     amenities: Optional[str] = Query(None, description="comma-separated: parking,balcony,elevator,security,storage"),
+    # viewport bbox (map bounds)
+    bbox_south: float | None = None,
+    bbox_west: float | None = None,
+    bbox_north: float | None = None,
+    bbox_east: float | None = None,
+     # proximity filter (center + radius in meters)
+    lat: float | None = None,
+    lng: float | None = None,
+    radius_m: int | None = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(24, ge=1, le=100),
     sort: Optional[str] = Query("recent", pattern="^(price_asc|price_desc|m2_asc|m2_desc|recent)$"),
@@ -45,6 +54,10 @@ def list_listings(
         page=page,
         page_size=page_size,
         sort=sort,
+        # pass through geo params
+        bbox_south=bbox_south, bbox_west=bbox_west,
+        bbox_north=bbox_north, bbox_east=bbox_east,
+        lat=lat, lng=lng, radius_m=radius_m,
     )
 
     items = [ListingOut.model_validate(r).model_dump() for r in rows]

@@ -2,18 +2,15 @@ from sqlalchemy import Column, Integer, Float, String, Boolean, text
 from sqlalchemy.orm import declarative_base
 from .settings import settings
 
-
 Base = declarative_base()
-
 
 class Listing(Base):
     __tablename__ = settings.VIEW_OR_TABLE
     __table_args__ = {"schema": settings.SCHEMA}
 
-
     listing_id = Column(String, primary_key=True)
     city = Column(String)
-    type = Column(String) # "buy" | "rent"
+    type = Column(String) 
     square_m = Column(Float)
     rooms = Column(Integer)
     floor = Column(Integer)

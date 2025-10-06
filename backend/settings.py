@@ -4,6 +4,7 @@ from pydantic import Field, AliasChoices
 class Settings(BaseSettings):
     DATABASE_URL: str
     DEBUG: bool = False
+    USE_POSTGIS: bool = True 
     SCHEMA: str = Field(
         default="realestate",
         validation_alias=AliasChoices("DB_SCHEMA", "SCHEMA"),
