@@ -23,6 +23,13 @@ class ListingOut(BaseModel):
     has_security: Optional[bool]
     has_storage_room: Optional[bool]
     price_history: Optional[List[PricePoint]] = None 
+    school_distance: float | None = None
+    clinic_distance: float | None = None
+    post_office_distance: float | None = None
+    kindergarten_distance: float | None = None
+    restaurant_distance: float | None = None
+    college_distance: float | None = None
+    pharmacy_distance: float | None = None
 
     class Config:
         from_attributes = True

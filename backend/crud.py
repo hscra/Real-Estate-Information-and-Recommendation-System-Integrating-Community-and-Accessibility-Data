@@ -34,6 +34,13 @@ def build_filters(
     max_price: float | None,
     rooms: int | None,
     amenities: list[str] | None,
+    max_school: float | None = None,
+    max_clinic: float | None = None,
+    max_post_office: float | None = None,
+    max_restaurant: float | None = None,
+    max_college: float | None = None,
+    max_pharmacy: float | None = None,
+    max_kindergarten: float | None = None,
     ):
     conds = []
     if city:
@@ -55,46 +62,54 @@ def build_filters(
             col = AMENITY_MAP.get(a)
             if col is not None:
                 conds.append(col.is_(True))
+    if max_school is not None:       conds.append(Listing.school_distance <= max_school)
+    if max_clinic is not None:       conds.append(Listing.clinic_distance <= max_clinic)
+    if max_post_office is not None:  conds.append(Listing.post_office_distance <= max_post_office)
+    if max_restaurant is not None:   conds.append(Listing.restaurant_distance <= max_restaurant)
+    if max_college is not None:      conds.append(Listing.college_distance <= max_college)
+    if max_pharmacy is not None:     conds.append(Listing.pharmacy_distance <= max_pharmacy)
+    if max_kindergarten is not None: conds.append(Listing.kindergarten_distance <= max_kindergarten)
+    
     return and_(*conds) if conds else None
 
 
-def search_listings(
-    db: Session,
-    city: str | None,
-    type_: str | None,
-    min_m2: float | None,
-    max_m2: float | None,
-    min_price: float | None,
-    max_price: float | None,
-    rooms: int | None,
-    amenities: list[str] | None,
-    page: int,
-    page_size: int,
-    sort: str | None,
+# def search_listings(
+#     db: Session,
+#     city: str | None,
+#     type_: str | None,
+#     min_m2: float | None,
+#     max_m2: float | None,
+#     min_price: float | None,
+#     max_price: float | None,
+#     rooms: int | None,
+#     amenities: list[str] | None,
+#     page: int,
+#     page_size: int,
+#     sort: str | None,
     
-) -> Tuple[Sequence[Listing], int]:
-    filters = build_filters(city, type_, min_m2, max_m2, min_price, max_price, rooms, amenities)
+# ) -> Tuple[Sequence[Listing], int]:
+#     filters = build_filters(city, type_, min_m2, max_m2, min_price, max_price, rooms, amenities)
 
 
-    base = select(Listing)
-    if filters is not None:
-        base = base.where(filters)
+#     base = select(Listing)
+#     if filters is not None:
+#         base = base.where(filters)
 
 
-    total = db.execute(select(func.count()).select_from(base.subquery())).scalar_one()
+#     total = db.execute(select(func.count()).select_from(base.subquery())).scalar_one()
 
 
-    order_clause = SORT_MAP.get(sort or "", DEFAULT_SORT)
+#     order_clause = SORT_MAP.get(sort or "", DEFAULT_SORT)
 
 
-    rows = db.execute(
-        base.order_by(order_clause)
-        .offset((page - 1) * page_size)
-        .limit(page_size)
-    ).scalars().all()
+#     rows = db.execute(
+#         base.order_by(order_clause)
+#         .offset((page - 1) * page_size)
+#         .limit(page_size)
+#     ).scalars().all()
 
 
-    return rows, total
+#     return rows, total
 
 
 def fetch_price_histories(db, listing_ids: list[str]) -> dict[str, list[dict]]:
