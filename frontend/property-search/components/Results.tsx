@@ -33,17 +33,19 @@ function Card({
       ref={ref}
       onClick={onClick}
       className={[
-        "rounded-2xl border shadow p-4 flex flex-col gap-2 bg-white cursor-pointer transition",
-        selected ? "border-blue-800 bg-blue-80" : "hover:border-gray-400",
+        "rounded-2xl border shadow p-4 flex flex-col gap-2 bg-white cursor-pointer transition-all duration-200",
+        selected
+          ? "border-4 border-red-800 bg-red-50 scale-[1.02]"
+          : "hover:border-gray-400",
       ].join(" ")}
     >
-      <div className="text-lg font-semibold capitalize">
+      <div className="text-lg font-semibold capitalize text-gray-700">
         {item.city} · {item.type?.toUpperCase() || "—"}
       </div>
       <div className="text-sm text-gray-700">
         {item.square_m ?? "?"} m² · {item.rooms ?? "?"} rooms
       </div>
-      <div className="text-xl font-bold">
+      <div className="text-xl font-bold text-gray-700">
         {item.price?.toLocaleString("pl-PL")} PLN
       </div>
       {/* … your price history block … */}
