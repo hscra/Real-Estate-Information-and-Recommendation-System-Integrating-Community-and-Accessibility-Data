@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from db import get_db
+from backend.db import get_db
 from backend.opinion_schemas.opinion import OpinionsResponse, Opinion
 from backend.opinion_crud.opinion import get_opinions_by_listing, upsert_many
-from services.opinion_generator import synthesize_opinions
+from backend.services.opinion_generator import synthesize_opinions
 import pandas as pd
 
 router = APIRouter(prefix="/listings", tags=["opinions"])
