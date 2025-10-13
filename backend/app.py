@@ -4,10 +4,13 @@ from .db import get_db
 from sqlalchemy.orm import Session
 from .crud import search_listings,fetch_price_histories
 from .schemas import ListingsResponse, ListingOut
+from routers import opinions
+
 
 
 app = FastAPI(title="Property Search API")
 
+app.include_router(opinions.router)
 
 @app.get("/health")
 def health():
