@@ -70,6 +70,6 @@ def synthesize_opinions(df_listings: pd.DataFrame, n_per_listing: int = 3, seed:
                 'opinion_id': f"{row['listing_id']}-{j+1}",
                 'cleanliness': cl, 'safety': sa, 'parking': pk, 'noise': nz,
                 'transit_access': tr, 'sunlight': su, 'overall': overall,
-                'text': text, 'source': 'synthetic_v1'
+                'review_text': text, 'source': 'synthetic_v1'
             })
     return pd.DataFrame(rows)
