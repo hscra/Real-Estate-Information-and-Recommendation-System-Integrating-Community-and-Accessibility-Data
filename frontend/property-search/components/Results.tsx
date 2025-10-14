@@ -48,8 +48,17 @@ function Card({
       <div className="text-xl font-bold text-gray-700">
         {item.price?.toLocaleString("pl-PL")} PLN
       </div>
-      {/* … your price history block … */}
+      <div className="text-xs text-gray-700 grid grid-cols-2 gap-y-1 mt-2">
+        <div>School: {item.school_distance ?? "—"} m</div>
+        <div>Clinic: {item.clinic_distance ?? "—"} m</div>
+        <div>Post: {item.post_office_distance ?? "—"} m</div>
+        <div>Kindergarten: {item.kindergarten_distance ?? "—"} m</div>
+        <div>Restaurant: {item.restaurant_distance ?? "—"} m</div>
+        <div>College: {item.college_distance ?? "—"} m</div>
+        <div>Pharmacy: {item.pharmacy_distance ?? "—"} m</div>
+      </div>
     </div>
+
     // <div className="rounded-2xl border shadow p-4 flex flex-col gap-3 bg-white text-gray-900">
     //   {/* Header */}
     //   <div className="text-lg font-semibold capitalize">
