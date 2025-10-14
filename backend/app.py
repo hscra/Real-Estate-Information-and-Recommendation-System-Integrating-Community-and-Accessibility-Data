@@ -1,16 +1,30 @@
 from fastapi import FastAPI, Depends, Query
+from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional, Annotated
 from .db import get_db
 from sqlalchemy.orm import Session
 from .crud import search_listings,fetch_price_histories
 from .schemas import ListingsResponse, ListingOut
-from routers import opinions
+from backend.routers.opinion import router as opinions_router
 
 
 
 app = FastAPI(title="Property Search API")
+origins =[
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
 
-app.include_router(opinions.router)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+app.include_router(opinions_router)
 
 @app.get("/health")
 def health():
