@@ -10,7 +10,7 @@ class Opinion(BaseModel):
     transit_access: int
     sunlight: int
     overall: int
-    text: str
+    review_text: str
     source: str
 
 class OpinionsResponse(BaseModel):
