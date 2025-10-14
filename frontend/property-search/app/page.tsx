@@ -4,6 +4,7 @@ import { Filters } from "../components/Filters";
 import { Results } from "../components/Results";
 import { useListings, type SearchParams } from "../lib/useListings";
 import MapView from "@/components/MapView";
+import { OpinionsPanel } from "@/components/OpinionsPanel";
 
 export default function Page() {
   const [params, setParams] = useState<SearchParams>({
@@ -17,41 +18,81 @@ export default function Page() {
   const { data, loading, error } = useListings(params);
 
   return (
-    <main>
-      <h1 className="text-2xl font-bold mb-4">Property Search</h1>
-      <Filters onChange={(p) => setParams(p)} />
-      {/* Map (sync bounds to API) */}
-      <MapView
-        items={data?.items ?? []}
-        onSelectListing={(id) => setSelectedId(id)}
-        onBoundsChanged={(b) => {
-          // Attach bounds to params so backend can filter by viewport
-          setParams((prev) => ({
-            ...prev,
-            bbox_south: b.south,
-            bbox_west: b.west,
-            bbox_north: b.north,
-            bbox_east: b.east,
-            page: 1,
-          }));
-        }}
-        // onSelectListing={(id) => {
-        //   // Optional: scroll to that card or open details modal
-        //   const el = document.getElementById(`card-${id}`);
-        //   el?.scrollIntoView({ behavior: "smooth", block: "center" });
-        //   el?.classList.add("ring", "ring-blue-500");
-        //   setTimeout(() => el?.classList.remove("ring", "ring-blue-500"), 1200);
-        // }}
-      />
-      {loading && <div className="mt-4">Loading…</div>}
-      {error && <div className="mt-4 text-red-600">{error}</div>}
-      <Results
-        data={data}
-        selectedId={selectedId}
-        onSelect={setSelectedId}
-        onPage={(page) => setParams((prev) => ({ ...prev, page }))}
-      />
+    <main className="grid grid-cols-12 gap-4">
+      {/* --- LEFT SIDE --- */}
+      <section className="col-span-8">
+        <h1 className="text-2xl font-bold mb-4">Property Search</h1>
+
+        <Filters onChange={(p) => setParams(p)} />
+
+        {/* Map */}
+        <MapView
+          items={data?.items ?? []}
+          onSelectListing={(id) => setSelectedId(id)}
+          onBoundsChanged={(b) => {
+            setParams((prev) => ({
+              ...prev,
+              bbox_south: b.south,
+              bbox_west: b.west,
+              bbox_north: b.north,
+              bbox_east: b.east,
+              page: 1,
+            }));
+          }}
+        />
+
+        {loading && <div className="mt-4">Loading…</div>}
+        {error && <div className="mt-4 text-red-600">{error}</div>}
+
+        <Results
+          data={data}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+          onPage={(page) => setParams((prev) => ({ ...prev, page }))}
+        />
+      </section>
+
+      {/* --- RIGHT SIDE: OPINIONS PANEL --- */}
+      <aside className="col-span-4 border-l overflow-y-auto h-[calc(100vh-2rem)]">
+        {/* Pass the selected listing ID */}
+        <OpinionsPanel listingId={selectedId ?? undefined} />
+      </aside>
     </main>
+    // <main>
+    //   <h1 className="text-2xl font-bold mb-4">Property Search</h1>
+    //   <Filters onChange={(p) => setParams(p)} />
+    //   {/* Map (sync bounds to API) */}
+    //   <MapView
+    //     items={data?.items ?? []}
+    //     onSelectListing={(id) => setSelectedId(id)}
+    //     onBoundsChanged={(b) => {
+    //       // Attach bounds to params so backend can filter by viewport
+    //       setParams((prev) => ({
+    //         ...prev,
+    //         bbox_south: b.south,
+    //         bbox_west: b.west,
+    //         bbox_north: b.north,
+    //         bbox_east: b.east,
+    //         page: 1,
+    //       }));
+    //     }}
+    //     // onSelectListing={(id) => {
+    //     //   // Optional: scroll to that card or open details modal
+    //     //   const el = document.getElementById(`card-${id}`);
+    //     //   el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    //     //   el?.classList.add("ring", "ring-blue-500");
+    //     //   setTimeout(() => el?.classList.remove("ring", "ring-blue-500"), 1200);
+    //     // }}
+    //   />
+    //   {loading && <div className="mt-4">Loading…</div>}
+    //   {error && <div className="mt-4 text-red-600">{error}</div>}
+    //   <Results
+    //     data={data}
+    //     selectedId={selectedId}
+    //     onSelect={setSelectedId}
+    //     onPage={(page) => setParams((prev) => ({ ...prev, page }))}
+    //   />
+    // </main>
   );
 }
 
