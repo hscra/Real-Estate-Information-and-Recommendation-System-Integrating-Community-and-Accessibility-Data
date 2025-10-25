@@ -1,10 +1,13 @@
 "use client";
-import { useState } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { Filters } from "../components/Filters";
 import { Results } from "../components/Results";
 import { useListings, type SearchParams } from "../lib/useListings";
 import MapView from "@/components/MapView";
 import { OpinionsPanel } from "@/components/OpinionsPanel";
+import type { Listing } from "@/lib/types";
+
+type Bounds = { south: number; west: number; north: number; east: number };
 
 export default function Page() {
   const [params, setParams] = useState<SearchParams>({
@@ -16,6 +19,63 @@ export default function Page() {
   });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const { data, loading, error } = useListings(params);
+  const [items, setItems] = useState<Listing[]>([]);
+  const [firstLoad, setFirstLoad] = useState(true);
+
+  // one AbortController shared across requests
+  const abortRef = useRef<AbortController | null>(null);
+  const FIRST_LOAD_LIMIT = 3000;
+
+  const fetchByBounds = useCallback(async (b?: Bounds | null) => {
+    abortRef.current?.abort();
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+
+    try {
+      const url = !b
+        ? `/api/listings?limit=${FIRST_LOAD_LIMIT}` // nationwide preview
+        : `/api/listings?` +
+          new URLSearchParams({
+            north: String(b.north),
+            south: String(b.south),
+            east: String(b.east),
+            west: String(b.west),
+            limit: "10000", // return all in bbox (or a high cap)
+          }).toString();
+
+      const res = await fetch(url, { signal: ctrl.signal, cache: "no-store" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const json = await res.json();
+      const data: Listing[] = Array.isArray(json) ? json : json.items ?? [];
+      setItems(data);
+      // const qs = new URLSearchParams({
+      //   south: String(b.south),
+      //   west: String(b.west),
+      //   north: String(b.north),
+      //   east: String(b.east),
+      //   limit: "10000",
+      //   // include any other filters you use (rooms, price, etc.)
+      // });
+
+      // const res = await fetch(`/api/listings?${qs.toString()}`, {
+      //   signal: ctrl.signal,
+      //   cache: "no-store", // avoids Next fetch cache surprises
+      // });
+      // if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      // const json = await res.json();
+      // const data: Listing[] = json.items ?? [];
+      // setItems(data); // only runs if not aborted
+    } catch (err: any) {
+      if (err?.name === "AbortError") return; // stale request — ignore
+      console.error(err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchByBounds(null); // first load → nationwide preview
+  }, [fetchByBounds]);
 
   return (
     <main className="grid grid-cols-12 gap-4">
@@ -26,7 +86,14 @@ export default function Page() {
         <Filters onChange={(p) => setParams(p)} />
 
         {/* Map */}
+
         <MapView
+          items={items}
+          onBoundsChanged={fetchByBounds} // <-- pass the aborting fetcher
+          onSelectListing={(id) => setSelectedId(id)}
+          // defaultCenter / defaultZoom / colorMetric as you like
+        />
+        {/* <MapView
           items={data?.items ?? []}
           onSelectListing={(id) => setSelectedId(id)}
           onBoundsChanged={(b) => {
@@ -39,7 +106,7 @@ export default function Page() {
               page: 1,
             }));
           }}
-        />
+        /> */}
 
         {loading && <div className="mt-4">Loading…</div>}
         {error && <div className="mt-4 text-red-600">{error}</div>}
@@ -58,41 +125,6 @@ export default function Page() {
         <OpinionsPanel listingId={selectedId ?? undefined} />
       </aside>
     </main>
-    // <main>
-    //   <h1 className="text-2xl font-bold mb-4">Property Search</h1>
-    //   <Filters onChange={(p) => setParams(p)} />
-    //   {/* Map (sync bounds to API) */}
-    //   <MapView
-    //     items={data?.items ?? []}
-    //     onSelectListing={(id) => setSelectedId(id)}
-    //     onBoundsChanged={(b) => {
-    //       // Attach bounds to params so backend can filter by viewport
-    //       setParams((prev) => ({
-    //         ...prev,
-    //         bbox_south: b.south,
-    //         bbox_west: b.west,
-    //         bbox_north: b.north,
-    //         bbox_east: b.east,
-    //         page: 1,
-    //       }));
-    //     }}
-    //     // onSelectListing={(id) => {
-    //     //   // Optional: scroll to that card or open details modal
-    //     //   const el = document.getElementById(`card-${id}`);
-    //     //   el?.scrollIntoView({ behavior: "smooth", block: "center" });
-    //     //   el?.classList.add("ring", "ring-blue-500");
-    //     //   setTimeout(() => el?.classList.remove("ring", "ring-blue-500"), 1200);
-    //     // }}
-    //   />
-    //   {loading && <div className="mt-4">Loading…</div>}
-    //   {error && <div className="mt-4 text-red-600">{error}</div>}
-    //   <Results
-    //     data={data}
-    //     selectedId={selectedId}
-    //     onSelect={setSelectedId}
-    //     onPage={(page) => setParams((prev) => ({ ...prev, page }))}
-    //   />
-    // </main>
   );
 }
 
