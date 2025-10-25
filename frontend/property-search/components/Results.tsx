@@ -39,23 +39,24 @@ function Card({
           : "hover:border-gray-400",
       ].join(" ")}
     >
-      <div className="text-lg font-semibold capitalize text-gray-700">
-        {item.city} · {item.type?.toUpperCase() || "—"}
+      <div className="text-sm capitalize text-black">{item.city}</div>
+      <div className="text-sm capitalize text-black">
+        {item.type?.toUpperCase() || "—"}
       </div>
-      <div className="text-sm text-gray-700">
+      <div className="text-sm font-bold text-blue-700">
         {item.square_m ?? "?"} m² · {item.rooms ?? "?"} rooms
       </div>
       <div className="text-xl font-bold text-gray-700">
         {item.price?.toLocaleString("pl-PL")} PLN
       </div>
       <div className="text-xs text-gray-700 grid grid-cols-2 gap-y-1 mt-2">
-        <div>School: {item.school_distance ?? "—"} m</div>
-        <div>Clinic: {item.clinic_distance ?? "—"} m</div>
-        <div>Post: {item.post_office_distance ?? "—"} m</div>
-        <div>Kindergarten: {item.kindergarten_distance ?? "—"} m</div>
-        <div>Restaurant: {item.restaurant_distance ?? "—"} m</div>
-        <div>College: {item.college_distance ?? "—"} m</div>
-        <div>Pharmacy: {item.pharmacy_distance ?? "—"} m</div>
+        <div>🎒: {(item.school_distance ?? 0) * 1000} m</div>
+        <div>🚑: {(item.clinic_distance ?? 0) * 1000} m</div>
+        <div>📮: {(item.post_office_distance ?? 0) * 1000} m</div>
+        <div>👶: {(item.kindergarten_distance ?? 0) * 1000} m</div>
+        <div>🍝: {(item.restaurant_distance ?? 0) * 1000} m</div>
+        <div>🎓: {(item.college_distance ?? 0) * 1000} m</div>
+        <div>💊: {(item.pharmacy_distance ?? 0) * 1000} m</div>
       </div>
     </div>
 
