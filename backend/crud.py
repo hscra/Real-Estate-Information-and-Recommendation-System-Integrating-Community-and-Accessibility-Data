@@ -132,12 +132,14 @@ MIN_PRICE_FLOOR = 10_000.0
 def search_listings(
     db: Session,
     *,
+    south: float, west: float, north: float, east: float,
     city: str | None,
     type_: str | None,
     min_m2: float | None,
     max_m2: float | None,
     min_price: float | None,
     max_price: float | None,
+    
     rooms: int | None,
     amenities: list[str] | None,
     page: int,
@@ -161,7 +163,12 @@ def search_listings(
     max_pharmacy: float | None = None,
     max_kindergarten: float | None = None,
 
+    limit: int = 100, offset: int = 0,
 ):
+    clauses : List = []
+    clauses.append(Listing.latitude.between(south,north))
+    clauses.append(Listing.longitude.between(west,east))
+
     # Base: select from v_latest_listings
     base = select(Listing)
     params: dict[str, object] = {}
@@ -213,6 +220,20 @@ def search_listings(
         filters.append("kindergarten_distance <= :max_kindergarten")
         params["max_kindergarten"] = max_kindergarten
 
+
+    if max_school is not None:
+        clauses.append(Listing.school_distance <= max_school)
+    if max_clinic is not None:
+        clauses.append(Listing.clinic_distance <= max_clinic)
+    if max_post_office is not None:
+        clauses.append(Listing.post_office_distance <= max_post_office)
+    if max_restaurant is not None:
+        clauses.append(Listing.restaurant_distance <= max_restaurant)
+    if max_college is not None:
+        clauses.append(Listing.college_distance <= max_college)
+    if max_pharmacy is not None:
+        clauses.append(Listing.pharmacy_distance <= max_pharmacy)
+
     # Count total (wrap the selectable)
     total = db.execute(select(func.count()).select_from(base.subquery())).scalar_one()
 
@@ -222,13 +243,23 @@ def search_listings(
     else:
         order_clause = SORT_MAP.get(sort or "", SORT_MAP["recent"])
 
-    rows = (
-        db.execute(
-            base.order_by(order_clause)
-                .offset((page - 1) * page_size)
-                .limit(page_size)
-        ).scalars().all()
+
+    stmt = (
+        select(Listing)
+        .where(and_(*clauses))      # ← combine once here
+        .limit(limit)
+        .offset(offset)
     )
+
+    rows = db.execute(stmt).scalars().all()
+
+    # rows = (
+    #     db.execute(
+    #         base.order_by(order_clause)
+    #             .offset((page - 1) * page_size)
+    #             .limit(page_size)
+    #     ).scalars().all()
+    # )
 
 
     return rows, total
