@@ -5,7 +5,7 @@ import { Results } from "../components/Results";
 import { useListings, type SearchParams } from "../lib/useListings";
 import MapView from "@/components/MapView";
 import { OpinionsPanel } from "@/components/OpinionsPanel";
-import type { Listing } from "@/lib/types";
+import { ListingsResponse, Listing } from "@/lib/types";
 
 type Bounds = { south: number; west: number; north: number; east: number };
 
@@ -20,8 +20,28 @@ export default function Page() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const { data, loading, error } = useListings(params);
   const [items, setItems] = useState<Listing[]>([]);
-  const [firstLoad, setFirstLoad] = useState(true);
+  const [listingsData, setListingsData] = useState<ListingsResponse | null>(
+    null
+  );
 
+  const handleBoundsChange = useCallback(async (b: any) => {
+    const qs = new URLSearchParams({
+      south: String(b.south),
+      west: String(b.west),
+      north: String(b.north),
+      east: String(b.east),
+      limit: "10000",
+    });
+
+    const res = await fetch(`/api/listings?${qs}`);
+    if (!res.ok) return;
+    const json = await res.json();
+    setListingsData(json);
+  }, []);
+
+  const handleSelect = useCallback((id: string) => {
+    setSelectedId(id);
+  }, []);
   // one AbortController shared across requests
   const abortRef = useRef<AbortController | null>(null);
   const FIRST_LOAD_LIMIT = 3000;
@@ -88,33 +108,22 @@ export default function Page() {
         {/* Map */}
 
         <MapView
-          items={items}
-          onBoundsChanged={fetchByBounds} // <-- pass the aborting fetcher
-          onSelectListing={(id) => setSelectedId(id)}
+          items={listingsData?.items ?? []}
+          // items={items}
+          onBoundsChanged={handleBoundsChange} // <-- pass the aborting fetcher
+          onSelectListing={handleSelect}
+          // onSelectListing={(id) => setSelectedId(id)}
           // defaultCenter / defaultZoom / colorMetric as you like
         />
-        {/* <MapView
-          items={data?.items ?? []}
-          onSelectListing={(id) => setSelectedId(id)}
-          onBoundsChanged={(b) => {
-            setParams((prev) => ({
-              ...prev,
-              bbox_south: b.south,
-              bbox_west: b.west,
-              bbox_north: b.north,
-              bbox_east: b.east,
-              page: 1,
-            }));
-          }}
-        /> */}
 
         {loading && <div className="mt-4">Loading…</div>}
         {error && <div className="mt-4 text-red-600">{error}</div>}
 
         <Results
-          data={data}
+          // data={data}
+          data={listingsData}
           selectedId={selectedId}
-          onSelect={setSelectedId}
+          onSelect={handleSelect}
           onPage={(page) => setParams((prev) => ({ ...prev, page }))}
         />
       </section>

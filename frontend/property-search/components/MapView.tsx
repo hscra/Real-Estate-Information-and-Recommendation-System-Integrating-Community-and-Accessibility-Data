@@ -27,6 +27,7 @@ export default function MapView({
   onBoundsChanged?: (b: Bounds) => void;
   onSelectListing?: (id: string) => void;
   defaultCenter?: { lat: number; lng: number };
+  selectedId?: string | null;
   defaultZoom?: number;
   colorMetric?:
     | "centre_distance"
