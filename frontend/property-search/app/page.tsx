@@ -23,6 +23,59 @@ export default function Page() {
   const [listingsData, setListingsData] = useState<ListingsResponse | null>(
     null
   );
+  const [filters, setFilters] = useState<SearchParams>({
+    page: 1,
+    page_size: 24,
+    sort: "recent",
+  });
+  const [bounds, setBounds] = useState<Bounds | null>(null);
+  const [data_1, setData] = useState<ListingsResponse | null>(null);
+
+  function applyFilters(p: SearchParams) {
+    setFilters(p);
+    if (bounds) fetchListings(bounds, p); // re-fetch map+cards with filters
+  }
+
+  function onBoundsChanged(b: Bounds) {
+    setBounds(b);
+    fetchListings(b, filters); // same params for map & cards
+  }
+
+  function appendFilters(qs: URLSearchParams, f: SearchParams) {
+    if (f.city) qs.set("city", f.city);
+    if (f.type) qs.set("type", f.type);
+    if (f.min_m2) qs.set("min_m2", String(f.min_m2));
+    if (f.max_m2) qs.set("max_m2", String(f.max_m2));
+    if (f.max_price) qs.set("max_price", String(f.max_price));
+    if (f.amenities?.length) qs.set("amenities", f.amenities.join(","));
+    if (f.max_school) qs.set("max_school", String(f.max_school));
+    if (f.max_clinic) qs.set("max_clinic", String(f.max_clinic));
+    if (f.max_post_office) qs.set("max_post_office", String(f.max_post_office));
+    if (f.max_restaurant) qs.set("max_restaurant", String(f.max_restaurant));
+    if (f.max_college) qs.set("max_college", String(f.max_college));
+    if (f.max_pharmacy) qs.set("max_pharmacy", String(f.max_pharmacy));
+    if (f.color_metric) qs.set("color_metric", f.color_metric);
+    qs.set("page", String(f.page ?? 1));
+    qs.set("page_size", String(f.page_size ?? 24));
+    qs.set("sort", f.sort ?? "recent");
+  }
+
+  async function fetchListings(b: Bounds, f: SearchParams) {
+    const qs = new URLSearchParams({
+      north: String(b.north),
+      south: String(b.south),
+      east: String(b.east),
+      west: String(b.west),
+      limit: "10000",
+    });
+    appendFilters(qs, f);
+    const res = await fetch(`/api/listings?${qs.toString()}`, {
+      cache: "no-store",
+    });
+    if (!res.ok) return;
+    const json = await res.json();
+    setData(json); // <-- single source of truth
+  }
 
   const handleBoundsChange = useCallback(async (b: any) => {
     const qs = new URLSearchParams({
@@ -103,14 +156,15 @@ export default function Page() {
       <section className="col-span-8">
         <h1 className="text-2xl font-bold mb-4">Property Search</h1>
 
-        <Filters onChange={(p) => setParams(p)} />
-
+        {/* <Filters onChange={(p) => setParams(p)} /> */}
+        <Filters onChange={applyFilters} />
         {/* Map */}
 
         <MapView
           items={listingsData?.items ?? []}
           // items={items}
-          onBoundsChanged={handleBoundsChange} // <-- pass the aborting fetcher
+          // onBoundsChanged={handleBoundsChange} // <-- pass the aborting fetcher
+          onBoundsChanged={onBoundsChanged}
           onSelectListing={handleSelect}
           // onSelectListing={(id) => setSelectedId(id)}
           // defaultCenter / defaultZoom / colorMetric as you like
@@ -120,8 +174,8 @@ export default function Page() {
         {error && <div className="mt-4 text-red-600">{error}</div>}
 
         <Results
-          // data={data}
-          data={listingsData}
+          data={data_1}
+          // data={listingsData}
           selectedId={selectedId}
           onSelect={handleSelect}
           onPage={(page) => setParams((prev) => ({ ...prev, page }))}

@@ -23,6 +23,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from .settings import settings
+print("CONFIG → SCHEMA:", settings.SCHEMA, "| VIEW_OR_TABLE:", settings.VIEW_OR_TABLE)
+
 
 app.include_router(opinions_router)
 

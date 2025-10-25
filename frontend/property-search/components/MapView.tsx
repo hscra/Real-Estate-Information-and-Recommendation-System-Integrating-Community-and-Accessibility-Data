@@ -211,18 +211,33 @@ export default function MapView({
           options={{ algorithm: clusterOptions }}
           onLoad={(mc: any) => {
             mc.addListener("clusterclick", (cluster: any) => {
+              const map = mc.getMap?.();
+              if (!map) return;
+
               try {
-                const map = mc.getMap?.();
-                if (!map) return;
+                let markers: any[] = [];
 
-                // Retrieve markers in a version-safe way
-                const markers =
-                  cluster?.markers ??
-                  cluster?.clusterMarkers ??
-                  cluster?.getMarkers?.() ??
-                  [];
+                // try getMarkers() first
+                if (typeof cluster.getMarkers === "function") {
+                  const maybe = cluster.getMarkers();
+                  if (Array.isArray(maybe)) markers = maybe;
+                }
 
-                if (!Array.isArray(markers) || markers.length === 0) return;
+                // fallback if markers exist under another property
+                if (markers.length === 0 && Array.isArray(cluster.markers)) {
+                  markers = cluster.markers;
+                }
+                if (
+                  markers.length === 0 &&
+                  Array.isArray(cluster.clusterMarkers)
+                ) {
+                  markers = cluster.clusterMarkers;
+                }
+
+                if (markers.length === 0) {
+                  console.warn("Cluster click: no markers found", cluster);
+                  return;
+                }
 
                 const bounds = new google.maps.LatLngBounds();
                 for (const m of markers) {
@@ -236,7 +251,7 @@ export default function MapView({
                   map.setZoom(Math.min(z + 1, 19));
                 }
               } catch (err) {
-                console.warn("cluster click error", err);
+                console.error("Cluster click error:", err);
               }
             });
           }}
