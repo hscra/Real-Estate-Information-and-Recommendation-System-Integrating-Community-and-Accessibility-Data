@@ -1,4 +1,4 @@
-from sqlalchemy import select, and_, or_, func, MetaData, Table
+from sqlalchemy import select, and_, or_, func, MetaData, Table, true
 from sqlalchemy.orm import Session
 from typing import Sequence, Tuple
 from .models import Listing
@@ -15,11 +15,11 @@ AMENITY_MAP = {
 
 
 SORT_MAP = {
+    "recent": Listing.snapshot_date.desc(),
     "price_asc": Listing.price.asc(),
     "price_desc": Listing.price.desc(),
     "m2_asc": Listing.square_m.asc(),
     "m2_desc": Listing.square_m.desc(),
-    "recent": func.coalesce(Listing.snapshot_date, "1970-01-01").desc(),
 }
 
 
@@ -139,7 +139,6 @@ def search_listings(
     max_m2: float | None,
     min_price: float | None,
     max_price: float | None,
-    
     rooms: int | None,
     amenities: list[str] | None,
     page: int,
@@ -163,79 +162,143 @@ def search_listings(
     max_pharmacy: float | None = None,
     max_kindergarten: float | None = None,
 
-    limit: int = 100, offset: int = 0,
+    limit: int = 100, 
+    offset: int = 0,
 ):
-    clauses : List = []
-    clauses.append(Listing.latitude.between(south,north))
-    clauses.append(Listing.longitude.between(west,east))
+    page_size = max(1, min(page_size or 500, 1000))  
+    conditions = []  
+
+    # clauses : List = []
+    # clauses.append(Listing.latitude.between(south,north))
+    # clauses.append(Listing.longitude.between(west,east))
 
     # Base: select from v_latest_listings
     base = select(Listing)
+    # base = select(Listing).distinct()
+
+    # base = select(
+    #     Listing.listing_id,
+    #     Listing.price,
+    #     Listing.square_m,
+    #     Listing.rooms,
+    #     Listing.latitude,
+    #     Listing.longitude,
+    #     Listing.type,
+    #     Listing.city,
+    #     Listing.snapshot_date,
+    #     Listing.has_parking_space,
+    #     Listing.has_balcony,
+    #     Listing.has_elevator,
+    #     Listing.has_security,
+    #     Listing.has_storage_room,
+    #     Listing.school_distance,
+    #     Listing.clinic_distance,
+    #     Listing.post_office_distance,
+    #     Listing.restaurant_distance,
+    #     Listing.college_distance,
+    #     Listing.pharmacy_distance,
+    #     Listing.kindergarten_distance,
+    # )
+
+    conditions = [
+        Listing.latitude.between(south, north),
+        Listing.longitude.between(west, east),
+        Listing.price >=  max(MIN_PRICE_FLOOR, float(min_price or 0.0)),
+    ]
+
     params: dict[str, object] = {}
     effective_min_price = max(MIN_PRICE_FLOOR, float(min_price or 0.0))
 
+    # Map bounds
+    conditions.extend( [
+        Listing.latitude  >= south,
+        Listing.latitude  <= north,
+        Listing.longitude >= west,
+        Listing.longitude <= east,
+    ])
+
     # Build attribute filters 
+    effective_min_price = max(MIN_PRICE_FLOOR, float(min_price or 0.0))
     filters = build_filters(city, type_, min_m2, max_m2, min_price=effective_min_price, max_price=max_price, rooms=rooms, amenities=amenities)
     if filters is not None:
-        base = base.where(filters)
+        # base = base.where(filters)
+        conditions.append(filters)
 
-    # Geo
-    distance_expr = None
-    if settings.USE_POSTGIS and any(v is not None for v in (bbox_south, bbox_west, bbox_north, bbox_east, lat, lng, radius_m)):
-        fact = reflect_fact_table(db)
-        # join on listing_id
-        base = base.join(fact, fact.c.listing_id == Listing.listing_id)
+    # Geo queires
+    # distance_expr = None
+    # if settings.USE_POSTGIS and any(v is not None for v in (bbox_south, bbox_west, bbox_north, bbox_east, lat, lng, radius_m)):
+    #     fact = reflect_fact_table(db)
+    #     # join on listing_id
+    #     base = base.join(fact, 
+    #                      and_( fact.c.listing_id == Listing.listing_id,
+    #                           fact.c.is_latest == True)
+    #     )
+    #     # bbox
+    #     if None not in (bbox_south, bbox_west, bbox_north, bbox_east):
+    #         base = apply_bbox_filter(base, fact, bbox_south, bbox_west, bbox_north, bbox_east)
 
-        # bbox
-        if None not in (bbox_south, bbox_west, bbox_north, bbox_east):
-            base = apply_bbox_filter(base, fact, bbox_south, bbox_west, bbox_north, bbox_east)
-
-        # radius
-        if None not in (lat, lng, radius_m):
-            base, distance_expr = apply_radius_filter(base, fact, lat, lng, radius_m)
+    #     # radius
+    #     if None not in (lat, lng, radius_m):
+    #         base, distance_expr = apply_radius_filter(base, fact, lat, lng, radius_m)
             
 
 
 
-    # POI distance filters (adjust names if your columns differ)
+    # POI distance filters 
+    if max_price is not None:
+        conditions.append(Listing.price <= max_price)
     if max_school is not None:
-        filters.append("school_distance <= :max_school")
-        params["max_school"] = max_school
+        conditions.append("school_distance <= :max_school")
+        # params["max_school"] = max_school
     if max_clinic is not None:
-        filters.append("clinic_distance <= :max_clinic")
-        params["max_clinic"] = max_clinic
+        conditions.append("clinic_distance <= :max_clinic")
+        # params["max_clinic"] = max_clinic
     if max_post_office is not None:
-        filters.append("post_office_distance <= :max_post_office")
-        params["max_post_office"] = max_post_office
+        conditions.append("post_office_distance <= :max_post_office")
+        # params["max_post_office"] = max_post_office
     if max_restaurant is not None:
-        filters.append("restaurant_distance <= :max_restaurant")
-        params["max_restaurant"] = max_restaurant
+        conditions.append("restaurant_distance <= :max_restaurant")
+        # params["max_restaurant"] = max_restaurant
     if max_college is not None:
-        filters.append("college_distance <= :max_college")
-        params["max_college"] = max_college
+        conditions.append("college_distance <= :max_college")
+        # params["max_college"] = max_college
     if max_pharmacy is not None:
-        filters.append("pharmacy_distance <= :max_pharmacy")
-        params["max_pharmacy"] = max_pharmacy
+        conditions.append("pharmacy_distance <= :max_pharmacy")
+        # params["max_pharmacy"] = max_pharmacy
     if max_kindergarten is not None:
-        filters.append("kindergarten_distance <= :max_kindergarten")
-        params["max_kindergarten"] = max_kindergarten
+        conditions.append("kindergarten_distance <= :max_kindergarten")
+        # params["max_kindergarten"] = max_kindergarten
+    if amenities:
+        for a in amenities:
+            col = AMENITY_MAP.get(a)
+            if col is not None:
+                conditions.append(col.is_(True))
+
+    where_clause = and_(*conditions) if conditions else true()
+    base = base.where(where_clause)
 
 
-    if max_school is not None:
-        clauses.append(Listing.school_distance <= max_school)
-    if max_clinic is not None:
-        clauses.append(Listing.clinic_distance <= max_clinic)
-    if max_post_office is not None:
-        clauses.append(Listing.post_office_distance <= max_post_office)
-    if max_restaurant is not None:
-        clauses.append(Listing.restaurant_distance <= max_restaurant)
-    if max_college is not None:
-        clauses.append(Listing.college_distance <= max_college)
-    if max_pharmacy is not None:
-        clauses.append(Listing.pharmacy_distance <= max_pharmacy)
+    # postGIS spatial filter
+    distance_expr = None
+    if settings.USE_POSTGIS and any(v is not None for v in (bbox_south, bbox_west, bbox_north, bbox_east, lat, lng, radius_m)):
+        fact = reflect_fact_table(db)  # realestate.fact_listings
+        base = base.join(
+            fact,
+            and_(fact.c.listing_id == Listing.listing_id, fact.c.is_latest.is_(True)),
+        )
+        if None not in (bbox_south, bbox_west, bbox_north, bbox_east):
+            base = apply_bbox_filter(base, fact, bbox_south, bbox_west, bbox_north, bbox_east)
+        if None not in (lat, lng, radius_m):
+            base, distance_expr = apply_radius_filter(base, fact, lat, lng, radius_m)
 
-    # Count total (wrap the selectable)
-    total = db.execute(select(func.count()).select_from(base.subquery())).scalar_one()
+    base = base.where(and_(*conditions)).distinct()
+    
+    # Sorting
+    if sort == "distance_asc" and distance_expr is not None:
+        base = base.order_by(distance_expr.asc())
+    else:
+        order_clause = SORT_MAP.get(sort or "", SORT_MAP["recent"])
+        base = base.order_by(order_clause)
 
     # Sorting
     if sort == "distance_asc" and distance_expr is not None:
@@ -243,23 +306,22 @@ def search_listings(
     else:
         order_clause = SORT_MAP.get(sort or "", SORT_MAP["recent"])
 
+    # Count over the filtered 'base'
+    total = db.execute(select(func.count()).select_from(base.subquery())).scalar_one()
 
+    # Page the same filtered/sorted 'base'
     stmt = (
-        select(Listing)
-        .where(and_(*clauses))      # ← combine once here
-        .limit(limit)
-        .offset(offset)
+        base
+        .order_by(order_clause)
+        .limit(page_size)
+        .offset((page - 1) * page_size)
     )
 
-    rows = db.execute(stmt).scalars().all()
+    # rows = db.execute(stmt).all()
+    rows = db.execute(
+    base.order_by(order_clause).limit(page_size).offset((page - 1) * page_size)
+    ).scalars().all()  # ← .scalars()
 
-    # rows = (
-    #     db.execute(
-    #         base.order_by(order_clause)
-    #             .offset((page - 1) * page_size)
-    #             .limit(page_size)
-    #     ).scalars().all()
-    # )
 
 
     return rows, total
