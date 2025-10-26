@@ -240,7 +240,7 @@ export default function MapView({
                     clusterer={clusterer}
                     icon={icon}
                     onClick={() => {
-                      setActive(i.listing_id);
+                      // setActive(i.listing_id);
                       onSelectListing?.(i.listing_id);
                     }}
                   >

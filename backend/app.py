@@ -118,3 +118,12 @@ def list_listings(
             it["price_history"] = hmap.get(it["listing_id"], [])
 
     return {"items": items, "page": page, "page_size": page_size, "total": total}
+
+
+@app.get("/listings/{listing_id}/history")
+def get_price_history(listing_id: str, db: Session = Depends(get_db)):
+    """Return price history points for a single listing.
+    Shape: { listing_id, history: [{date, price}, ...] }
+    """
+    hmap = fetch_price_histories(db, [listing_id])
+    return {"listing_id": listing_id, "history": hmap.get(listing_id, [])}

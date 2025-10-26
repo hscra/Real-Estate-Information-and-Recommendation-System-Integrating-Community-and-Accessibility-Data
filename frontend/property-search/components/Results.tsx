@@ -1,5 +1,6 @@
 "use client";
-import type { ListingsResponse, Listing } from "../lib/types";
+import type { ListingsResponse, Listing, PricePoint } from "../lib/types";
+import { usePriceHistory } from "@/lib/usePriceHistory";
 import { useMemo, useEffect, useRef } from "react";
 
 function Card({
@@ -11,7 +12,10 @@ function Card({
   selected: boolean;
   onClick: () => void;
 }) {
-  const hist = item.price_history ?? [];
+  // Prefer history sent with the list; if not present and selected, fetch on demand
+  const embedded = item.price_history ?? [];
+  const { data: fetchedHist } = usePriceHistory(selected ? item.listing_id : undefined);
+  const hist: PricePoint[] = (embedded && embedded.length ? embedded : fetchedHist) ?? [];
   const ref = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -49,6 +53,33 @@ function Card({
       <div className="text-xl font-bold text-gray-700">
         {item.price?.toLocaleString("pl-PL")} PLN
       </div>
+      {hist.length > 0 && (
+        <div className="text-xs text-gray-700">
+          {(() => {
+            const last = hist[hist.length - 1];
+            const prev = hist.length > 1 ? hist[hist.length - 2] : null;
+            const diff = prev ? last.price - prev.price : null;
+            const pct = prev && prev.price ? (diff! / prev.price) * 100 : null;
+            return (
+              <div>
+                <span className="font-medium">Last change:</span>{" "}
+                {prev ? (
+                  <>
+                    {prev.date} → {last.date}:{" "}
+                    <span className={diff! >= 0 ? "text-red-600" : "text-green-600"}>
+                      {diff! >= 0 ? "+" : ""}
+                      {Math.round(diff!).toLocaleString("pl-PL")} PLN
+                      {pct !== null && ` (${pct.toFixed(1)}%)`}
+                    </span>
+                  </>
+                ) : (
+                  <>{last.date}</>
+                )}
+              </div>
+            );
+          })()}
+        </div>
+      )}
       <div className="text-xs text-gray-700 grid grid-cols-2 gap-y-1 mt-2">
         <div>🎒: {Math.round((item.school_distance ?? 0) * 1000)} m</div>
         <div>🚑: {Math.round((item.clinic_distance ?? 0) * 1000)} m</div>
