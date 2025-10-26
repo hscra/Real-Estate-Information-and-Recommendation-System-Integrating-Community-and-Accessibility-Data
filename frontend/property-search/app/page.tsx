@@ -8,17 +8,25 @@ import { OpinionsPanel } from "@/components/OpinionsPanel";
 import { ListingsResponse, Listing } from "@/lib/types";
 
 type Bounds = { south: number; west: number; north: number; east: number };
+const DEFAULT_KRAKOW: Bounds = {
+  south: 49.966,
+  west: 19.768,
+  north: 50.132,
+  east: 20.165, // rough bbox
+};
 
 export default function Page() {
   const [params, setParams] = useState<SearchParams>({
     // type: undefined,
     page: 1,
-    page_size: 24,
+    page_size: 500,
     sort: "recent",
-    include_history: true,
+    include_history: false,
   });
+  const [bounds, setBounds] = useState<Bounds | null>(null);
+  const [data_1, setData] = useState<ListingsResponse | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const { data, loading, error } = useListings(params);
+  const { data, loading, error } = useListings(params, bounds ?? undefined);
   const [items, setItems] = useState<Listing[]>([]);
   const [listingsData, setListingsData] = useState<ListingsResponse | null>(
     null
@@ -28,17 +36,13 @@ export default function Page() {
     page_size: 24,
     sort: "recent",
   });
-  const [bounds, setBounds] = useState<Bounds | null>(null);
-  const [data_1, setData] = useState<ListingsResponse | null>(null);
 
   function applyFilters(p: SearchParams) {
-    setFilters(p);
-    if (bounds) fetchListings(bounds, p); // re-fetch map+cards with filters
+    setParams(p);
   }
 
   function onBoundsChanged(b: Bounds) {
     setBounds(b);
-    fetchListings(b, filters); // same params for map & cards
   }
 
   function appendFilters(qs: URLSearchParams, f: SearchParams) {
@@ -60,95 +64,9 @@ export default function Page() {
     qs.set("sort", f.sort ?? "recent");
   }
 
-  async function fetchListings(b: Bounds, f: SearchParams) {
-    const qs = new URLSearchParams({
-      north: String(b.north),
-      south: String(b.south),
-      east: String(b.east),
-      west: String(b.west),
-      limit: "10000",
-    });
-    appendFilters(qs, f);
-    const res = await fetch(`/api/listings?${qs.toString()}`, {
-      cache: "no-store",
-    });
-    if (!res.ok) return;
-    const json = await res.json();
-    setData(json); // <-- single source of truth
-  }
-
-  const handleBoundsChange = useCallback(async (b: any) => {
-    const qs = new URLSearchParams({
-      south: String(b.south),
-      west: String(b.west),
-      north: String(b.north),
-      east: String(b.east),
-      limit: "10000",
-    });
-
-    const res = await fetch(`/api/listings?${qs}`);
-    if (!res.ok) return;
-    const json = await res.json();
-    setListingsData(json);
-  }, []);
-
-  const handleSelect = useCallback((id: string) => {
-    setSelectedId(id);
-  }, []);
   // one AbortController shared across requests
   const abortRef = useRef<AbortController | null>(null);
   const FIRST_LOAD_LIMIT = 3000;
-
-  const fetchByBounds = useCallback(async (b?: Bounds | null) => {
-    abortRef.current?.abort();
-    const ctrl = new AbortController();
-    abortRef.current = ctrl;
-
-    try {
-      const url = !b
-        ? `/api/listings?limit=${FIRST_LOAD_LIMIT}` // nationwide preview
-        : `/api/listings?` +
-          new URLSearchParams({
-            north: String(b.north),
-            south: String(b.south),
-            east: String(b.east),
-            west: String(b.west),
-            limit: "10000", // return all in bbox (or a high cap)
-          }).toString();
-
-      const res = await fetch(url, { signal: ctrl.signal, cache: "no-store" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-      const json = await res.json();
-      const data: Listing[] = Array.isArray(json) ? json : json.items ?? [];
-      setItems(data);
-      // const qs = new URLSearchParams({
-      //   south: String(b.south),
-      //   west: String(b.west),
-      //   north: String(b.north),
-      //   east: String(b.east),
-      //   limit: "10000",
-      //   // include any other filters you use (rooms, price, etc.)
-      // });
-
-      // const res = await fetch(`/api/listings?${qs.toString()}`, {
-      //   signal: ctrl.signal,
-      //   cache: "no-store", // avoids Next fetch cache surprises
-      // });
-      // if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-      // const json = await res.json();
-      // const data: Listing[] = json.items ?? [];
-      // setItems(data); // only runs if not aborted
-    } catch (err: any) {
-      if (err?.name === "AbortError") return; // stale request — ignore
-      console.error(err);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchByBounds(null); // first load → nationwide preview
-  }, [fetchByBounds]);
 
   return (
     <main className="grid grid-cols-12 gap-4">
@@ -156,17 +74,17 @@ export default function Page() {
       <section className="col-span-8">
         <h1 className="text-2xl font-bold mb-4">Property Search</h1>
 
-        {/* <Filters onChange={(p) => setParams(p)} /> */}
-        <Filters onChange={applyFilters} />
+        <Filters onChange={(p) => setParams(p)} />
+        {/* <Filters onChange={applyFilters} /> */}
         {/* Map */}
 
         <MapView
-          items={listingsData?.items ?? []}
+          items={data?.items ?? []}
           // items={items}
           // onBoundsChanged={handleBoundsChange} // <-- pass the aborting fetcher
           onBoundsChanged={onBoundsChanged}
-          onSelectListing={handleSelect}
-          // onSelectListing={(id) => setSelectedId(id)}
+          // onSelectListing={handleSelect}
+          onSelectListing={(id) => setSelectedId(id)}
           // defaultCenter / defaultZoom / colorMetric as you like
         />
 
@@ -174,10 +92,10 @@ export default function Page() {
         {error && <div className="mt-4 text-red-600">{error}</div>}
 
         <Results
-          data={data_1}
+          data={data ?? null}
           // data={listingsData}
           selectedId={selectedId}
-          onSelect={handleSelect}
+          onSelect={(id) => setSelectedId(id)}
           onPage={(page) => setParams((prev) => ({ ...prev, page }))}
         />
       </section>
