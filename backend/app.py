@@ -73,7 +73,7 @@ def list_listings(
     max_pharmacy: Optional[int] = Query(None, ge=1),
     max_kindergarten: Optional[int] = Query(None,ge=1),
     page: int = Query(1, ge=1),
-    page_size: int = Query(24, ge=1, le=100),
+    page_size: int = Query(24, ge=1, le=1000),
     sort: Optional[str] = Query("recent", pattern="^(price_asc|price_desc|m2_asc|m2_desc|recent)$"),
 
     db: Session = Depends(get_db),
@@ -110,10 +110,11 @@ def list_listings(
 
     items = [ListingOut.model_validate(r).model_dump() for r in rows]
 
-    # Attach price history for the items returned on this page
-    ids = [it["listing_id"] for it in items]
-    hmap = fetch_price_histories(db, ids)
-    for it in items:
-        it["price_history"] = hmap.get(it["listing_id"], [])
+    # Attach price history only when requested to reduce payload and speed
+    if include_history:
+        ids = [it["listing_id"] for it in items]
+        hmap = fetch_price_histories(db, ids)
+        for it in items:
+            it["price_history"] = hmap.get(it["listing_id"], [])
 
     return {"items": items, "page": page, "page_size": page_size, "total": total}

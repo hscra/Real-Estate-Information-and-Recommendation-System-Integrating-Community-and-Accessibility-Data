@@ -55,6 +55,14 @@ export default function MapView({
     );
   }, [items]);
 
+  const MAX_MARKERS = 2000;
+  const displayItems = useMemo(() => {
+    const arr = uniqueItems;
+    if (arr.length <= MAX_MARKERS) return arr;
+    const stride = Math.ceil(arr.length / MAX_MARKERS);
+    return arr.filter((_, i) => i % stride === 0);
+  }, [uniqueItems]);
+
   const onLoad = useCallback(
     (map: google.maps.Map) => {
       mapRef.current = map;
@@ -153,8 +161,8 @@ export default function MapView({
   const clusterOptions = useMemo<MarkerClustererOptions>(
     () => ({
       algorithm: new SuperClusterAlgorithm({
-        maxZoom: 15,
-        radius: 80,
+        maxZoom: 18,
+        radius: 140,
       }),
     }),
     []
@@ -208,7 +216,7 @@ export default function MapView({
       >
         <MarkerClustererF
           // @ts-ignore
-          options={{ algorithm: clusterOptions }}
+          options={clusterOptions}
           onLoad={(mc: any) => {
             mc.addListener("clusterclick", (cluster: any) => {
               const map = mc.getMap?.();
@@ -258,7 +266,7 @@ export default function MapView({
         >
           {(clusterer) => (
             <>
-              {uniqueItems.map((i) => {
+              {displayItems.map((i) => {
                 const val = getMetricValue(i);
                 const icon = {
                   url: pinUrl(colorForDistance(val)),
