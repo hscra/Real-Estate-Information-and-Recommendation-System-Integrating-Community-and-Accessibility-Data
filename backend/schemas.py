@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict 
 from typing import Optional, List
 
 class PricePoint(BaseModel):
@@ -30,9 +30,10 @@ class ListingOut(BaseModel):
     restaurant_distance: float | None = None
     college_distance: float | None = None
     pharmacy_distance: float | None = None
+    model_config = ConfigDict(from_attributes=True)
 
-    class Config:
-        from_attributes = True
+    # class Config:
+    #     from_attributes = True
 
 class ListingsResponse(BaseModel):
     items: list[ListingOut]
