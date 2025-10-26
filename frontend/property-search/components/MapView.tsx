@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useCallback, useState } from "react";
 import {
   GoogleMap,
-  Marker,
+  MarkerF,
   MarkerClustererF,
   useLoadScript,
   InfoWindowF,
@@ -42,6 +42,8 @@ export default function MapView({
 
   const mapRef = useRef<google.maps.Map | null>(null);
   const [active, setActive] = useState<string | null>(null);
+  const [zoom, setZoom] = useState<number>(defaultZoom);
+  const cap = zoom < 12 ? 800 : zoom < 14 ? 1500 : 2500;
 
   // de-dupe + drop rows without coords
   const uniqueItems = useMemo(() => {
@@ -55,13 +57,13 @@ export default function MapView({
     );
   }, [items]);
 
-  const MAX_MARKERS = 2000;
+  const MAX_MARKERS = 500;
   const displayItems = useMemo(() => {
     const arr = uniqueItems;
-    if (arr.length <= MAX_MARKERS) return arr;
-    const stride = Math.ceil(arr.length / MAX_MARKERS);
+    if (arr.length <= cap) return arr;
+    const stride = Math.ceil(arr.length / cap);
     return arr.filter((_, i) => i % stride === 0);
-  }, [uniqueItems]);
+  }, [uniqueItems, cap]);
 
   const onLoad = useCallback(
     (map: google.maps.Map) => {
@@ -86,7 +88,7 @@ export default function MapView({
 
       // Fit to items on first load if available
       const pts = uniqueItems;
-      if (pts.length) {
+      if (pts.length && pts.length <= 1500) {
         const bounds = new google.maps.LatLngBounds();
         pts.forEach((p) =>
           bounds.extend({ lat: p.latitude!, lng: p.longitude! })
@@ -106,7 +108,7 @@ export default function MapView({
   const boundsNearlyEqual = (
     a: Bounds | null,
     b: Bounds | null,
-    eps = 1e-4
+    eps = 1e-3
   ) => {
     if (!a || !b) return false;
     return (
@@ -117,14 +119,7 @@ export default function MapView({
     );
   };
 
-  const clusterAlgorithm = useMemo(
-    () =>
-      new SuperClusterAlgorithm({
-        maxZoom: 15, // dissolve to individual flags at this zoom
-        radius: 80,
-      }),
-    []
-  );
+  // Note: clustering configured via clusterOptions below; no separate algorithm instance needed here.
 
   const handleIdle = useCallback(() => {
     if (!mapRef.current || !onBoundsChanged) return;
@@ -139,12 +134,15 @@ export default function MapView({
       west: sw.lng(),
     };
 
+    const z = mapRef.current?.getZoom?.();
+    if (typeof z === "number") setZoom((prev) => (prev !== z ? z : prev));
+
     if (boundsNearlyEqual(prevBoundsRef.current, next)) return;
     if (debounceTimerRef.current) window.clearTimeout(debounceTimerRef.current);
     debounceTimerRef.current = window.setTimeout(() => {
       prevBoundsRef.current = next;
       onBoundsChanged(next);
-    }, 250);
+    }, 400);
   }, [onBoundsChanged]);
 
   const options = useMemo<google.maps.MapOptions>(
@@ -163,6 +161,7 @@ export default function MapView({
       algorithm: new SuperClusterAlgorithm({
         maxZoom: 18,
         radius: 140,
+        minPoints: 4,
       }),
     }),
     []
@@ -203,6 +202,19 @@ export default function MapView({
     return `data:image/svg+xml;charset=UTF-8,${svg}`;
   }
 
+  // Cache icon data URLs per color to avoid recomputing per marker render
+  const iconUrlForHex = useMemo(() => {
+    const cache = new Map<string, string>();
+    return (hex: string) => {
+      let u = cache.get(hex);
+      if (!u) {
+        u = pinUrl(hex);
+        cache.set(hex, u);
+      }
+      return u;
+    };
+  }, []);
+
   if (!isLoaded)
     return <div className="h-[60vh] w-full rounded-2xl bg-gray-200" />;
 
@@ -214,66 +226,15 @@ export default function MapView({
         options={options}
         mapContainerStyle={{ height: "100%", width: "100%" }}
       >
-        <MarkerClustererF
-          // @ts-ignore
-          options={clusterOptions}
-          onLoad={(mc: any) => {
-            mc.addListener("clusterclick", (cluster: any) => {
-              const map = mc.getMap?.();
-              if (!map) return;
-
-              try {
-                let markers: any[] = [];
-
-                // try getMarkers() first
-                if (typeof cluster.getMarkers === "function") {
-                  const maybe = cluster.getMarkers();
-                  if (Array.isArray(maybe)) markers = maybe;
-                }
-
-                // fallback if markers exist under another property
-                if (markers.length === 0 && Array.isArray(cluster.markers)) {
-                  markers = cluster.markers;
-                }
-                if (
-                  markers.length === 0 &&
-                  Array.isArray(cluster.clusterMarkers)
-                ) {
-                  markers = cluster.clusterMarkers;
-                }
-
-                if (markers.length === 0) {
-                  console.warn("Cluster click: no markers found", cluster);
-                  return;
-                }
-
-                const bounds = new google.maps.LatLngBounds();
-                for (const m of markers) {
-                  const pos = m.getPosition?.();
-                  if (pos) bounds.extend(pos);
-                }
-
-                map.fitBounds(bounds);
-                const z = map.getZoom?.();
-                if (typeof z === "number") {
-                  map.setZoom(Math.min(z + 1, 19));
-                }
-              } catch (err) {
-                console.error("Cluster click error:", err);
-              }
-            });
-          }}
-        >
+        <MarkerClustererF options={clusterOptions}>
           {(clusterer) => (
             <>
               {displayItems.map((i) => {
                 const val = getMetricValue(i);
-                const icon = {
-                  url: pinUrl(colorForDistance(val)),
-                  scaledSize: new google.maps.Size(32, 48),
-                };
+                const hex = colorForDistance(val);
+                const icon = { url: iconUrlForHex(hex) } as google.maps.Icon;
                 return (
-                  <Marker
+                  <MarkerF
                     key={i.listing_id}
                     position={{ lat: i.latitude!, lng: i.longitude! }}
                     clusterer={clusterer}
@@ -301,7 +262,7 @@ export default function MapView({
                         </div>
                       </InfoWindowF>
                     )}
-                  </Marker>
+                  </MarkerF>
                 );
               })}
             </>
@@ -318,7 +279,7 @@ export default function MapView({
 //   GoogleMap,
 //   Marker,
 //   MarkerClustererF,
-//   useLoadScript,
+//   aoadScript,
 //   InfoWindowF,
 // } from "@react-google-maps/api";
 // import type { Listing } from "@/lib/types";
