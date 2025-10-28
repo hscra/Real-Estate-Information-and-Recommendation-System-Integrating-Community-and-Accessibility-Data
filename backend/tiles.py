@@ -30,7 +30,7 @@ def tile_bounds(z: int, x: int, y: int) -> Tuple[float, float, float, float]:
     return south, west, north, east
 
 def draw_points_tile(points: Iterable[Tuple[float, float]], z: int, x: int, y: int,
-                     dot_radius: int = 2, fill=(0, 122, 255, 190)) -> bytes:
+                     dot_radius: int = 4, fill=(0, 122, 255, 190)) -> bytes:
     img = Image.new("RGBA", (TILE_SIZE, TILE_SIZE), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
     x0 = x * TILE_SIZE

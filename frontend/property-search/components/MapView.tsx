@@ -60,12 +60,14 @@ export default function MapView({
 
     try {
       const res = await fetch(
-        `${base}/nearest?lat=${lat}&lng=${lng}&zoom=${zoom}&max_px=12`
+        // `${base}/nearest?lat=${lat}&lng=${lng}&zoom=${zoom}&max_px=12`
+        `/api/nearest?lat=${lat}&lng=${lng}&zoom=${zoom}&max_px=12`
       );
       if (!res.ok) return;
       const data = await res.json();
       if (data && data.found) {
         setHighlight({ lat: data.latitude, lng: data.longitude });
+        onSelectListing?.(data.listing_id); // selecting the card
       }
     } catch {
       /* ignore */
@@ -98,8 +100,7 @@ export default function MapView({
       map.setCenter(defaultCenter);
       map.setZoom(defaultZoom);
 
-      const base =
-        process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+      const base = process.env.NEXT_PUBLIC_API_BASE || "";
 
       // Insert the raster points overlay as the first overlay
       const pointsOverlay = new google.maps.ImageMapType({

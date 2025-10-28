@@ -33,3 +33,4 @@ class Listing(Base):
     restaurant_distance = Column(Float)
     college_distance  = Column(Float)
     pharmacy_distance = Column(Float)
+
