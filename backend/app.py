@@ -1,13 +1,17 @@
-from fastapi import FastAPI, Depends, Query
+from fastapi import FastAPI, Depends, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional, Annotated
 from .db import get_db
 from sqlalchemy.orm import Session
-from .crud import search_listings,fetch_price_histories
+from .crud import search_listings,fetch_price_histories, reflect_fact_table
 from .schemas import ListingsResponse, ListingOut
+from .services.prediction import get_predictions
 from backend.routers.opinion import router as opinions_router
 from .settings import settings
-
+from backend.tiles import tile_bounds, draw_points_tile, meters_per_pixel
+from .models import Listing
+from sqlalchemy import select, and_, func
+from math import radians, cos, sin, asin, sqrt
 
 app = FastAPI(title="Property Search API")
 origins =[
@@ -58,13 +62,6 @@ def list_listings(
     
     include_history: bool = Query(False),
    
-    # max_school: float | None = None,
-    # max_clinic: float | None = None,
-    # max_post_office: float | None = None,
-    # max_restaurant: float | None = None,
-    # max_college: float | None = None,
-    # max_pharmacy: float | None = None,
-    # max_kindergarten: float | None = None,
     max_school: Optional[int] = Query(None, ge=1),
     max_clinic: Optional[int] = Query(None, ge=1),
     max_post_office: Optional[int] = Query(None, ge=1),
@@ -117,6 +114,23 @@ def list_listings(
         for it in items:
             it["price_history"] = hmap.get(it["listing_id"], [])
 
+    # Attach predictions if available in main/
+    try:
+        ids = [it["listing_id"] for it in items]
+        pmap = get_predictions(ids)
+        if pmap:
+            for it in items:
+                preds = pmap.get(it["listing_id"]) or {}
+                if "svm" in preds:
+                    it["predicted_svm"] = float(preds["svm"])  # type: ignore
+                if "hgbr" in preds:
+                    it["predicted_hgbr"] = float(preds["hgbr"])  # type: ignore
+                if "nn" in preds:
+                    it["predicted_nn"] = float(preds["nn"])  # type: ignore
+    except Exception:
+        # Non-fatal: skip predictions if anything goes wrong
+        pass
+
     return {"items": items, "page": page, "page_size": page_size, "total": total}
 
 
@@ -127,3 +141,152 @@ def get_price_history(listing_id: str, db: Session = Depends(get_db)):
     """
     hmap = fetch_price_histories(db, [listing_id])
     return {"listing_id": listing_id, "history": hmap.get(listing_id, [])}
+
+#add PNG tile endpoints
+@app.get("/tiles/points/{z}/{x}/{y}.png")
+def points_tile(z: int, x: int, y: int, db: Session = Depends(get_db)) -> Response:
+    south, west, north, east = tile_bounds(z, x, y)
+    rows = db.execute(
+        select(Listing.latitude, Listing.longitude).where(
+            and_(
+                Listing.latitude.between(south, north),
+                Listing.longitude.between(west, east),
+                Listing.price >= 10000.0,  # keep your global MIN_PRICE_FLOOR if needed
+            )
+        )
+    ).all()
+    pts = [(lat, lon) for (lat, lon) in rows if lat is not None and lon is not None]
+    png = draw_points_tile(pts, z, x, y)
+    return Response(
+        content=png,
+        media_type="image/png",
+        headers={
+            "Cache-Control": "public, max-age=3600",
+        },
+    )
+
+
+def _deg_bbox_from_radius(lat: float, lng: float, radius_m: float):
+    # approx degrees per meter
+    dlat = radius_m / 111_320.0
+    dlng = radius_m / (111_320.0 * cos(radians(lat)) or 1e-9)
+    return (lat - dlat, lng - dlng, lat + dlat, lng + dlng)
+
+def _haversine_m(a_lat, a_lng, b_lat, b_lng):
+    R = 6371000.0
+    dlat = radians(b_lat - a_lat)
+    dlng = radians(b_lng - a_lng)
+    sa = sin(dlat / 2.0)
+    sb = sin(dlng / 2.0)
+    h = sa*sa + cos(radians(a_lat))*cos(radians(b_lat))*sb*sb
+    return 2 * R * asin(min(1.0, sqrt(h)))
+
+# @app.get("/nearest")
+# def nearest(
+#     lat: float, lng: float, zoom: int,
+#     max_px: int = 12,
+#     db: Session = Depends(get_db),
+# ):
+#     tol_m = meters_per_pixel(lat, zoom) * max_px
+
+#     if settings.USE_POSTGIS:
+#         from sqlalchemy import func
+#         user_pt = func.ST_SetSRID(func.ST_MakePoint(lng, lat), 4326)
+#         q = (
+#             select(
+#                 Listing,
+#                 func.ST_Distance(func.Geography(Listing.geom), func.Geography(user_pt)).label("d")
+#             )
+#             .where(func.ST_DWithin(func.Geography(Listing.geom), func.Geography(user_pt), tol_m))
+#             .order_by("d")
+#             .limit(1)
+#         )
+#         row = db.execute(q).first()
+#         if not row:
+#             return {"found": False}
+#         listing, dist_m = row
+#         return {
+#             "found": True,
+#             "listing_id": listing.listing_id,
+#             "latitude": listing.latitude,
+#             "longitude": listing.longitude,
+#             "distance_m": float(dist_m),
+#         }
+
+#     # Fallback: bbox prefilter + Python haversine
+#     south, west, north, east = _deg_bbox_from_radius(lat, lng, tol_m)
+#     candidates = db.execute(
+#         select(Listing.listing_id, Listing.latitude, Listing.longitude).where(
+#             and_(Listing.latitude.between(south, north),
+#                  Listing.longitude.between(west, east))
+#         )
+#     ).all()
+
+#     best = None
+#     best_d = 1e12
+#     for lid, la, lo in candidates:
+#         if la is None or lo is None:
+#             continue
+#         d = _haversine_m(lat, lng, la, lo)
+#         if d < best_d:
+#             best_d, best = d, (lid, la, lo)
+
+#     if not best:
+#         return {"found": False}
+
+#     lid, la, lo = best
+#     return {"found": True, "listing_id": lid, "latitude": la, "longitude": lo, "distance_m": float(best_d)}
+@app.get("/nearest")
+def nearest(lat: float, lng: float, zoom: int, max_px: int = 12, db: Session = Depends(get_db)):
+    tol_m = meters_per_pixel(lat, zoom) * max_px
+
+    if settings.USE_POSTGIS:
+        try:
+            fact = reflect_fact_table(db)  # realestate.fact_listings with geography POINT geom
+            user_pt = func.ST_SetSRID(func.ST_MakePoint(lng, lat), 4326)
+            dist = func.ST_Distance(func.Geography(fact.c.geom), func.Geography(user_pt)).label("d")
+
+            row = db.execute(
+                select(Listing, dist)
+                .join(fact, fact.c.listing_id == Listing.listing_id)
+                .where(func.ST_DWithin(func.Geography(fact.c.geom), func.Geography(user_pt), tol_m))
+                .order_by(dist.asc())
+                .limit(1)
+            ).first()
+
+            if row:
+                listing, dist_m = row
+                return {
+                    "found": True,
+                    "listing_id": listing.listing_id,
+                    "latitude": listing.latitude,
+                    "longitude": listing.longitude,
+                    "distance_m": float(dist_m),
+                }
+        except Exception:
+            # IMPORTANT: clear the failed transaction before fallback
+            db.rollback()
+
+    # Fallback: bbox + haversine on Listing latitude/longitude
+    south, west, north, east = _deg_bbox_from_radius(lat, lng, tol_m)
+    candidates = db.execute(
+        select(Listing.listing_id, Listing.latitude, Listing.longitude).where(
+            and_(Listing.latitude.between(south, north),
+                 Listing.longitude.between(west, east))
+        )
+    ).all()
+
+    best = None
+    best_d = 1e12
+    for lid, la, lo in candidates:
+        if la is None or lo is None:
+            continue
+        d = _haversine_m(lat, lng, la, lo)
+        if d < best_d:
+            best_d, best = d, (lid, la, lo)
+
+    if not best:
+        return {"found": False}
+
+    lid, la, lo = best
+    return {"found": True, "listing_id": lid, "latitude": la, "longitude": lo, "distance_m": float(best_d)}
