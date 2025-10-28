@@ -17,6 +17,10 @@ class ListingOut(BaseModel):
     latitude: Optional[float]
     longitude: Optional[float]
     price: Optional[float]
+    # Optional model predictions
+    predicted_svm: Optional[float] = None
+    predicted_hgbr: Optional[float] = None
+    predicted_nn: Optional[float] = None
     has_parking_space: Optional[bool]
     has_balcony: Optional[bool]
     has_elevator: Optional[bool]
