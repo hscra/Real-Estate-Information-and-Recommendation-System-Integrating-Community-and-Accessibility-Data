@@ -53,6 +53,25 @@ function Card({
       <div className="text-xl font-bold text-gray-700">
         {item.price?.toLocaleString("pl-PL")} PLN
       </div>
+      {([item.predicted_svm, item.predicted_hgbr, item.predicted_nn].some((v) => typeof v !== "undefined")) && (
+        <div className="mt-1 grid grid-cols-3 gap-1 text-[11px] text-gray-800">
+          {item.predicted_svm !== undefined && (
+            <span className="rounded-md border px-2 py-1 bg-blue-50 border-blue-200">
+              SVM: {Math.round(item.predicted_svm).toLocaleString("pl-PL")}
+            </span>
+          )}
+          {item.predicted_hgbr !== undefined && (
+            <span className="rounded-md border px-2 py-1 bg-amber-50 border-amber-200">
+              HGBR: {Math.round(item.predicted_hgbr).toLocaleString("pl-PL")}
+            </span>
+          )}
+          {item.predicted_nn !== undefined && (
+            <span className="rounded-md border px-2 py-1 bg-purple-50 border-purple-200">
+              NN: {Math.round(item.predicted_nn).toLocaleString("pl-PL")}
+            </span>
+          )}
+        </div>
+      )}
       {hist.length > 0 && (
         <div className="text-xs text-gray-700">
           {(() => {
