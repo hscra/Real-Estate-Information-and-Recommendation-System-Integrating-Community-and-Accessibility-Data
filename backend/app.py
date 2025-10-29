@@ -181,61 +181,6 @@ def _haversine_m(a_lat, a_lng, b_lat, b_lng):
     h = sa*sa + cos(radians(a_lat))*cos(radians(b_lat))*sb*sb
     return 2 * R * asin(min(1.0, sqrt(h)))
 
-# @app.get("/nearest")
-# def nearest(
-#     lat: float, lng: float, zoom: int,
-#     max_px: int = 12,
-#     db: Session = Depends(get_db),
-# ):
-#     tol_m = meters_per_pixel(lat, zoom) * max_px
-
-#     if settings.USE_POSTGIS:
-#         from sqlalchemy import func
-#         user_pt = func.ST_SetSRID(func.ST_MakePoint(lng, lat), 4326)
-#         q = (
-#             select(
-#                 Listing,
-#                 func.ST_Distance(func.Geography(Listing.geom), func.Geography(user_pt)).label("d")
-#             )
-#             .where(func.ST_DWithin(func.Geography(Listing.geom), func.Geography(user_pt), tol_m))
-#             .order_by("d")
-#             .limit(1)
-#         )
-#         row = db.execute(q).first()
-#         if not row:
-#             return {"found": False}
-#         listing, dist_m = row
-#         return {
-#             "found": True,
-#             "listing_id": listing.listing_id,
-#             "latitude": listing.latitude,
-#             "longitude": listing.longitude,
-#             "distance_m": float(dist_m),
-#         }
-
-#     # Fallback: bbox prefilter + Python haversine
-#     south, west, north, east = _deg_bbox_from_radius(lat, lng, tol_m)
-#     candidates = db.execute(
-#         select(Listing.listing_id, Listing.latitude, Listing.longitude).where(
-#             and_(Listing.latitude.between(south, north),
-#                  Listing.longitude.between(west, east))
-#         )
-#     ).all()
-
-#     best = None
-#     best_d = 1e12
-#     for lid, la, lo in candidates:
-#         if la is None or lo is None:
-#             continue
-#         d = _haversine_m(lat, lng, la, lo)
-#         if d < best_d:
-#             best_d, best = d, (lid, la, lo)
-
-#     if not best:
-#         return {"found": False}
-
-#     lid, la, lo = best
-#     return {"found": True, "listing_id": lid, "latitude": la, "longitude": lo, "distance_m": float(best_d)}
 @app.get("/nearest")
 def nearest(lat: float, lng: float, zoom: int, max_px: int = 12, db: Session = Depends(get_db)):
     tol_m = meters_per_pixel(lat, zoom) * max_px
