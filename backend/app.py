@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Depends, Query, Response
+import math
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional, Annotated
 from .db import get_db
@@ -105,7 +106,7 @@ def list_listings(
         max_kindergarten=max_kindergarten,
     )
 
-    items = [ListingOut.model_validate(r).model_dump() for r in rows]
+    items = [ListingOut.model_validate(r).model_dump(exclude_none=True) for r in rows]
 
     # Attach price history only when requested to reduce payload and speed
     if include_history:
@@ -121,11 +122,17 @@ def list_listings(
         if pmap:
             for it in items:
                 preds = pmap.get(it["listing_id"]) or {}
-                if "svm" in preds:
+                def _finite(v):
+                    try:
+                        f = float(v)
+                        return math.isfinite(f)
+                    except Exception:
+                        return False
+                if _finite(preds.get("svm")):
                     it["predicted_svm"] = float(preds["svm"])  # type: ignore
-                if "hgbr" in preds:
+                if _finite(preds.get("hgbr")):
                     it["predicted_hgbr"] = float(preds["hgbr"])  # type: ignore
-                if "nn" in preds:
+                if _finite(preds.get("nn")):
                     it["predicted_nn"] = float(preds["nn"])  # type: ignore
     except Exception:
         # Non-fatal: skip predictions if anything goes wrong

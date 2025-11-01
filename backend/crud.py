@@ -242,7 +242,7 @@ def search_listings(
     # rows = db.execute(stmt).all()
     rows = db.execute(
         base.order_by(order_clause).limit(page_size).offset((page - 1) * page_size)
-    ).scalars().all()  # ← .scalars()
+    ).scalars().all()  
 
 
     return rows, total

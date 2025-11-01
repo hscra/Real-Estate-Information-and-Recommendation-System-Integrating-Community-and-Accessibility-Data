@@ -7,25 +7,25 @@ class PricePoint(BaseModel):
 
 class ListingOut(BaseModel):
     listing_id: str
-    city: Optional[str]
-    type: Optional[str]
-    square_m: Optional[float]
-    rooms: Optional[int]
-    floor: Optional[int]
-    floor_count: Optional[int]
-    build_year: Optional[int]
-    latitude: Optional[float]
-    longitude: Optional[float]
-    price: Optional[float]
+    city: Optional[str] = None
+    type: Optional[str] = None
+    square_m: Optional[float] = None
+    rooms: Optional[int] = None
+    floor: Optional[int] = None
+    floor_count: Optional[int] = None
+    build_year: Optional[int] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    price: Optional[float] = None
     # Optional model predictions
     predicted_svm: Optional[float] = None
     predicted_hgbr: Optional[float] = None
     predicted_nn: Optional[float] = None
-    has_parking_space: Optional[bool]
-    has_balcony: Optional[bool]
-    has_elevator: Optional[bool]
-    has_security: Optional[bool]
-    has_storage_room: Optional[bool]
+    has_parking_space: Optional[bool] = None
+    has_balcony: Optional[bool] = None
+    has_elevator: Optional[bool] = None
+    has_security: Optional[bool] = None
+    has_storage_room: Optional[bool] = None
     price_history: Optional[List[PricePoint]] = None 
     school_distance: float | None = None
     clinic_distance: float | None = None
