@@ -145,7 +145,7 @@ def search_listings(
     page_size: int,
     sort: str | None,
 
-    # NEW geo params
+    # geo params
     bbox_south: float | None = None,
     bbox_west: float | None = None,
     bbox_north: float | None = None,
@@ -239,19 +239,10 @@ def search_listings(
     # Count over the filtered 'base'
     total = db.execute(select(func.count()).select_from(base.subquery())).scalar_one()
 
-    # Page the same filtered/sorted 'base'
-    # stmt = (
-    #     base
-    #     .order_by(order_clause)
-    #     .limit(page_size)
-    #     .offset((page - 1) * page_size)
-    # )
-
     # rows = db.execute(stmt).all()
     rows = db.execute(
         base.order_by(order_clause).limit(page_size).offset((page - 1) * page_size)
     ).scalars().all()  # ← .scalars()
-
 
 
     return rows, total
