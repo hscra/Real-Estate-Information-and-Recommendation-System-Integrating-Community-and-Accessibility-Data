@@ -21,7 +21,7 @@ export default function Page() {
     page: 1,
     page_size: 500,
     sort: "recent",
-    include_history: false,
+    include_history: true,
   });
   const [bounds, setBounds] = useState<Bounds | null>(null);
   const [data_1, setData] = useState<ListingsResponse | null>(null);
