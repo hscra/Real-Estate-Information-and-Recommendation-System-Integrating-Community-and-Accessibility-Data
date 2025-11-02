@@ -22,6 +22,7 @@ export default function MapView({
   defaultCenter = { lat: 50.0647, lng: 19.945 }, // Kraków
   defaultZoom = 12,
   colorMetric = "centre_distance",
+  selectedId,
 }: {
   items: Listing[];
   onBoundsChanged?: (b: Bounds) => void;
@@ -94,6 +95,24 @@ export default function MapView({
     return arr.filter((_, i) => i % stride === 0);
   }, [uniqueItems, cap]);
 
+  // When a card is selected, pan/zoom to it and show a highlight
+  useEffect(() => {
+    if (!selectedId || !mapRef.current) return;
+    const match = uniqueItems.find((i) => i.listing_id === selectedId);
+    if (!match || match.latitude == null || match.longitude == null) return;
+    const pos = { lat: match.latitude, lng: match.longitude };
+    try {
+      suppressNextIdleRef.current = true;
+      mapRef.current.panTo(pos);
+      const z = mapRef.current.getZoom?.() ?? defaultZoom;
+      if (z < 15) mapRef.current.setZoom(15);
+    } catch {
+      /* ignore */
+    }
+    setHighlight(pos);
+    setActive(selectedId);
+  }, [selectedId, uniqueItems]);
+
   const onLoad = useCallback(
     (map: google.maps.Map) => {
       mapRef.current = map;
@@ -156,6 +175,7 @@ export default function MapView({
 
   const prevBoundsRef = useRef<Bounds | null>(null);
   const debounceTimerRef = useRef<number | null>(null);
+  const suppressNextIdleRef = useRef<boolean>(false);
 
   const boundsNearlyEqual = (
     a: Bounds | null,
@@ -175,6 +195,10 @@ export default function MapView({
 
   const handleIdle = useCallback(() => {
     if (!mapRef.current || !onBoundsChanged) return;
+    if (suppressNextIdleRef.current) {
+      suppressNextIdleRef.current = false;
+      return;
+    }
     const b = mapRef.current.getBounds();
     if (!b) return;
     const ne = b.getNorthEast();

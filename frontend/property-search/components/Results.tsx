@@ -1,7 +1,7 @@
 "use client";
 import type { ListingsResponse, Listing, PricePoint } from "../lib/types";
 import { usePriceHistory } from "@/lib/usePriceHistory";
-import { useMemo, useEffect, useRef } from "react";
+import { useMemo, useRef } from "react";
 
 function Card({
   item,
@@ -24,18 +24,7 @@ function Card({
   const pricePerM2 =
     item.price != null && item.square_m ? item.price / item.square_m : null;
 
-  useEffect(() => {
-    if (selected && ref.current) {
-      ref.current.scrollIntoView({ behavior: "smooth", block: "center" });
-      // brief highlight pulse
-      ref.current.classList.add("ring", "ring-blue-800");
-      const t = setTimeout(
-        () => ref.current?.classList.remove("ring", "ring-blue-500"),
-        900
-      );
-      return () => clearTimeout(t);
-    }
-  }, [selected]);
+  // Highlight is optional; avoid auto-scrolling here to prevent bouncing when map pans
 
   return (
     <div
@@ -45,7 +34,7 @@ function Card({
       className={[
         "rounded-2xl border shadow p-4 flex flex-col gap-2 bg-white cursor-pointer transition-all duration-200",
         selected
-          ? "border-4 border-red-800 bg-red-50 scale-[1.02]"
+          ? "ring-2 ring-red-800 bg-red-50"
           : "hover:border-gray-400",
       ].join(" ")}
     >
