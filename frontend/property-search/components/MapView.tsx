@@ -51,30 +51,6 @@ export default function MapView({
     lng: number;
   } | null>(null);
 
-  // Add a map click handler that calls the backend nearest endpoint and moves the highlight
-  const handleMapClick = useCallback(async (e: google.maps.MapMouseEvent) => {
-    if (!mapRef.current || !e.latLng) return;
-    const lat = e.latLng.lat();
-    const lng = e.latLng.lng();
-    const zoom = mapRef.current.getZoom() ?? 12;
-    const base = process.env.NEXT_PUBLIC_BACKEND_URL || "";
-
-    try {
-      const res = await fetch(
-        // `${base}/nearest?lat=${lat}&lng=${lng}&zoom=${zoom}&max_px=12`
-        `/api/nearest?lat=${lat}&lng=${lng}&zoom=${zoom}&max_px=12`
-      );
-      if (!res.ok) return;
-      const data = await res.json();
-      if (data && data.found) {
-        setHighlight({ lat: data.latitude, lng: data.longitude });
-        onSelectListing?.(data.listing_id); // selecting the card
-      }
-    } catch {
-      /* ignore */
-    }
-  }, []);
-
   // de-dupe + drop rows without coords
   const uniqueItems = useMemo(() => {
     const arr = Array.isArray(items) ? items : [];
@@ -86,6 +62,42 @@ export default function MapView({
       ).values()
     );
   }, [items]);
+
+  // Map click → pick nearest visible listing and highlight + select its card
+  const handleMapClick = useCallback(
+    (e: google.maps.MapMouseEvent) => {
+      if (!mapRef.current || !e.latLng) return;
+      const lat = e.latLng.lat();
+      const lng = e.latLng.lng();
+
+      // Find nearest among currently displayed items (ensures a card exists to select)
+      let best: Listing | null = null;
+      let bestD = Infinity;
+      const toRad = (x: number) => (x * Math.PI) / 180;
+      const R = 6371000; // meters
+      for (const i of uniqueItems) {
+        if (i.latitude == null || i.longitude == null) continue;
+        const dLat = toRad(i.latitude - lat);
+        const dLng = toRad(i.longitude - lng);
+        const a =
+          Math.sin(dLat / 2) ** 2 +
+          Math.cos(toRad(lat)) *
+            Math.cos(toRad(i.latitude)) *
+            Math.sin(dLng / 2) ** 2;
+        const d = 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+        if (d < bestD) {
+          bestD = d;
+          best = i;
+        }
+      }
+      if (best && best.latitude != null && best.longitude != null) {
+        const pos = { lat: best.latitude, lng: best.longitude };
+        setHighlight(pos);
+        onSelectListing?.(best.listing_id);
+      }
+    },
+    [uniqueItems]
+  );
 
   const MAX_MARKERS = 500;
   const displayItems = useMemo(() => {
@@ -316,7 +328,13 @@ export default function MapView({
         {highlight && (
           <MarkerF
             position={highlight}
-            icon={{ url: highlightIconUrl() } as google.maps.Icon}
+            icon={
+              {
+                url: highlightIconUrl(),
+                scaledSize: new google.maps.Size(28, 28),
+                anchor: new google.maps.Point(14, 14), // center the dot on the coord
+              } as google.maps.Icon
+            }
             zIndex={google.maps.Marker.MAX_ZINDEX}
           />
         )}

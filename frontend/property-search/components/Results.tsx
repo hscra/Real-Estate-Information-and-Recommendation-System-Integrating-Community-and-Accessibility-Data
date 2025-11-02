@@ -34,7 +34,7 @@ function Card({
       className={[
         "rounded-2xl border shadow p-4 flex flex-col gap-2 bg-white cursor-pointer transition-all duration-200",
         selected
-          ? "ring-2 ring-red-800 bg-red-50"
+          ? "ring-4 ring-red-800 bg-red-50"
           : "hover:border-gray-400",
       ].join(" ")}
     >
