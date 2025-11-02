@@ -14,9 +14,15 @@ function Card({
 }) {
   // Prefer history sent with the list; if not present and selected, fetch on demand
   const embedded = item.price_history ?? [];
-  const { data: fetchedHist } = usePriceHistory(selected ? item.listing_id : undefined);
-  const hist: PricePoint[] = (embedded && embedded.length ? embedded : fetchedHist) ?? [];
+  const { data: fetchedHist } = usePriceHistory(
+    selected ? item.listing_id : undefined
+  );
+  const hist: PricePoint[] =
+    (embedded && embedded.length ? embedded : fetchedHist) ?? [];
   const ref = useRef<HTMLDivElement | null>(null);
+  // compute price per square meter safely
+  const pricePerM2 =
+    item.price != null && item.square_m ? item.price / item.square_m : null;
 
   useEffect(() => {
     if (selected && ref.current) {
@@ -53,7 +59,14 @@ function Card({
       <div className="text-xl font-bold text-gray-700">
         {item.price?.toLocaleString("pl-PL")} PLN
       </div>
-      {([item.predicted_svm, item.predicted_hgbr, item.predicted_nn].some((v) => typeof v !== "undefined")) && (
+      <div className="text-xl font-bold text-red-700">
+        {pricePerM2 != null
+          ? `(${Math.round(pricePerM2).toLocaleString("pl-PL")} PLN/m²)`
+          : `(${item.price?.toLocaleString("pl-PL") ?? "?"} PLN)`}
+      </div>
+      {[item.predicted_svm, item.predicted_hgbr, item.predicted_nn].some(
+        (v) => typeof v !== "undefined"
+      ) && (
         <div className="mt-1 grid grid-cols-3 gap-1 text-[11px] text-gray-800">
           {item.predicted_svm !== undefined && (
             <span className="rounded-md border px-2 py-1 bg-blue-50 border-blue-200">
@@ -85,7 +98,9 @@ function Card({
                 {prev ? (
                   <>
                     {prev.date} → {last.date}:{" "}
-                    <span className={diff! >= 0 ? "text-red-600" : "text-green-600"}>
+                    <span
+                      className={diff! >= 0 ? "text-red-600" : "text-green-600"}
+                    >
                       {diff! >= 0 ? "+" : ""}
                       {Math.round(diff!).toLocaleString("pl-PL")} PLN
                       {pct !== null && ` (${pct.toFixed(1)}%)`}
@@ -97,6 +112,21 @@ function Card({
               </div>
             );
           })()}
+          {/* Full price history */}
+          <div className="mt-1 border-t pt-1">
+            <div className="font-medium mb-1">Price history:</div>
+            <ul className="space-y-0.5 max-h-32 overflow-auto pr-1">
+              {hist.map((p) => (
+                <li
+                  key={`${p.date}-${p.price}`}
+                  className="flex justify-between"
+                >
+                  <span>{p.date}</span>
+                  <span>{Math.round(p.price).toLocaleString("pl-PL")} PLN</span>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       )}
       <div className="text-xs text-gray-700 grid grid-cols-2 gap-y-1 mt-2">
