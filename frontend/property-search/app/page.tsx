@@ -26,6 +26,7 @@ export default function Page() {
   const [bounds, setBounds] = useState<Bounds | null>(null);
   const [data_1, setData] = useState<ListingsResponse | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectionSource, setSelectionSource] = useState<"card" | "map" | null>(null);
   const mapRef = useRef<HTMLDivElement | null>(null);
   const { data, loading, error } = useListings(params, bounds ?? undefined);
   const [items, setItems] = useState<Listing[]>([]);
@@ -93,7 +94,10 @@ export default function Page() {
             // onBoundsChanged={handleBoundsChange} // <-- pass the aborting fetcher
             onBoundsChanged={onBoundsChanged}
             // onSelectListing={handleSelect}
-            onSelectListing={(id) => setSelectedId(id)}
+            onSelectListing={(id) => {
+              setSelectedId(id);
+              setSelectionSource("map");
+            }}
             selectedId={selectedId}
             // defaultCenter / defaultZoom / colorMetric as you like
           />
@@ -106,7 +110,11 @@ export default function Page() {
           data={data ?? null}
           // data={listingsData}
           selectedId={selectedId}
-          onSelect={(id) => setSelectedId(id)}
+          selectionSource={selectionSource}
+          onSelect={(id) => {
+            setSelectedId(id);
+            setSelectionSource("card");
+          }}
           onPage={(page) => setParams((prev) => ({ ...prev, page }))}
         />
       </section>

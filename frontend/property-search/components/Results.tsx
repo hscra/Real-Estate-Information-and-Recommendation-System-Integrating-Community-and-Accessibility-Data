@@ -6,10 +6,12 @@ import { useMemo, useRef } from "react";
 function Card({
   item,
   selected,
+  selectedFromMap,
   onClick,
 }: {
   item: Listing;
   selected: boolean;
+  selectedFromMap: boolean;
   onClick: () => void;
 }) {
   // Prefer history sent with the list; if not present and selected, fetch on demand
@@ -32,10 +34,12 @@ function Card({
       ref={ref}
       onClick={onClick}
       className={[
-        "rounded-2xl border shadow p-4 flex flex-col gap-2 bg-white cursor-pointer transition-all duration-200",
-        selected
+        "rounded-2xl border shadow p-4 flex flex-col gap-2 cursor-pointer transition-all duration-200",
+        selectedFromMap
+          ? "bg-blue-100 border-blue-500"
+          : selected
           ? "ring-4 ring-red-800 bg-red-50"
-          : "hover:border-gray-400",
+          : "bg-white hover:border-gray-400",
       ].join(" ")}
     >
       <div className="text-sm capitalize text-black">{item.city}</div>
@@ -136,11 +140,13 @@ export function Results({
   onPage,
   selectedId,
   onSelect,
+  selectionSource,
 }: {
   data: ListingsResponse | null;
   selectedId?: string | null;
   onSelect?: (id: string) => void;
   onPage: (p: number) => void;
+  selectionSource?: "card" | "map" | null;
 }) {
   const uniqueItems = useMemo(() => {
     if (!data) return [];
@@ -160,6 +166,7 @@ export function Results({
             key={i.listing_id}
             item={i}
             selected={i.listing_id === selectedId}
+            selectedFromMap={selectionSource === "map" && i.listing_id === selectedId}
             onClick={() => onSelect?.(i.listing_id)}
           />
         ))}

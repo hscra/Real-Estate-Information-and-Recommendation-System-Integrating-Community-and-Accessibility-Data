@@ -107,7 +107,7 @@ export default function MapView({
     return arr.filter((_, i) => i % stride === 0);
   }, [uniqueItems, cap]);
 
-  // When a card is selected, pan/zoom to it and show a highlight
+  // When a card is selected, pan/zoom to it and show a highlight only once per selection
   useEffect(() => {
     if (!selectedId || !mapRef.current) return;
     const match = uniqueItems.find((i) => i.listing_id === selectedId);
@@ -123,7 +123,7 @@ export default function MapView({
     }
     setHighlight(pos);
     setActive(selectedId);
-  }, [selectedId, uniqueItems]);
+  }, [selectedId]);
 
   const onLoad = useCallback(
     (map: google.maps.Map) => {
