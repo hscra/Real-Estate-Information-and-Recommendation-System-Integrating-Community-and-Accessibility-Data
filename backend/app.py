@@ -5,7 +5,7 @@ from typing import Optional, Annotated
 from .db import get_db
 from sqlalchemy.orm import Session
 from .crud import search_listings,fetch_price_histories, reflect_fact_table
-from .schemas import ListingsResponse, ListingOut
+from .schemas import ListingsResponse, ListingOut, PriceImpactRequest, PriceImpactResponse
 from .services.prediction import get_predictions
 from backend.routers.opinion import router as opinions_router
 from .settings import settings
@@ -242,3 +242,60 @@ def nearest(lat: float, lng: float, zoom: int, max_px: int = 12, db: Session = D
 
     lid, la, lo = best
     return {"found": True, "listing_id": lid, "latitude": la, "longitude": lo, "distance_m": float(best_d)}
+
+
+# Scenario-based price impact endpoint
+@app.post("/listings/{listing_id}/price-impact", response_model=PriceImpactResponse)
+def price_impact(
+    listing_id: str,
+    req: PriceImpactRequest,
+    db: Session = Depends(get_db),
+):
+    """Estimate price change if neighborhood accessibility/infrastructure changes.
+
+    Chooses base price from predictions when available, otherwise the current listing price.
+    Applies a transparent elasticity model and returns an adjusted price with breakdown.
+    """
+    # Load base listing
+    row = db.query(Listing).filter(Listing.listing_id == listing_id).first()
+    base_price = float(getattr(row, "price", 0.0) or 0.0)
+
+    # Prefer prediction if available
+    used_prediction = False
+    try:
+        pmap = get_predictions([listing_id])
+        preds = pmap.get(listing_id) or {}
+        # choose an available model in a deterministic order
+        for k in ("hgbr", "svm", "nn"):
+            v = preds.get(k)
+            try:
+                if v is not None:
+                    base_price = float(v)
+                    used_prediction = True
+                    break
+            except Exception:
+                continue
+    except Exception:
+        pass
+
+    # Build scenario and estimate
+    from backend.services.price_scenarios import Scenario, estimate_price_impact
+
+    scenario = Scenario(
+        centre_distance_km_change=float(req.centre_distance_km_change or 0.0),
+        transit_upgrade=bool(req.transit_upgrade or False),
+        transit_access_delta=(float(req.transit_access_delta) if req.transit_access_delta is not None else None),
+        new_poi_delta=int(req.new_poi_delta or 0),
+        amenity_distance_changes=req.amenity_distance_changes or None,
+    )
+    result = estimate_price_impact(base_price, scenario)
+
+    return PriceImpactResponse(
+        listing_id=listing_id,
+        base_price=base_price,
+        adjusted_price=result["adjusted_price"],
+        delta_amount=result["delta_amount"],
+        delta_pct=result["delta_pct"],
+        used_prediction=used_prediction,
+        breakdown=result["breakdown"],
+    )

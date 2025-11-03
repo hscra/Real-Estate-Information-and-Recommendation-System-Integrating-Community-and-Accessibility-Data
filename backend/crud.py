@@ -1,4 +1,5 @@
-from sqlalchemy import select, and_, or_, func, MetaData, Table, true
+from sqlalchemy import select, and_, or_, func, MetaData, Table, true, Column, String
+from sqlalchemy.sql.sqltypes import NullType
 from sqlalchemy.orm import Session
 from typing import Sequence, Tuple
 from .models import Listing
@@ -77,8 +78,14 @@ def fetch_price_histories(db, listing_ids: list[str]) -> dict[str, list[dict]]:
     if not listing_ids:
         return {}
 
-    meta = MetaData(schema="realestate")
-    fact = Table("fact_listings", meta, autoload_with=db.bind)
+    # Reflect only the needed columns to avoid PostGIS geography type warnings
+    meta = MetaData(schema=settings.SCHEMA)
+    fact = Table(
+        "fact_listings",
+        meta,
+        autoload_with=db.bind,
+        include_columns={"listing_id", "snapshot_date", "price"},
+    )
 
     q = (
         select(
@@ -106,8 +113,19 @@ def fetch_price_histories(db, listing_ids: list[str]) -> dict[str, list[dict]]:
     return out
 
 def reflect_fact_table(db: Session):
+    """Return a lightweight Table for spatial filters without full reflection.
+
+    We declare only the columns we need and skip reflecting the PostGIS
+    'geography' type to avoid SAWarning about unrecognized types.
+    """
     meta = MetaData(schema=settings.SCHEMA)
-    fact = Table("fact_listings", meta, autoload_with=db.bind)
+    fact = Table(
+        "fact_listings",
+        meta,
+        Column("listing_id", String),
+        Column("geom", NullType),  # placeholder for PostGIS geography
+        schema=settings.SCHEMA,
+    )
     return fact
 
 def apply_bbox_filter(q, fact, south, west, north, east):
