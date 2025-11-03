@@ -8,7 +8,7 @@ class SyntheticOpinion(Base):
     __table_args__ = {"schema": "realestate"}
 
     opinion_id      = Column(String, primary_key=True)
-    listing_id      = Column(String, nullable=False)  # FK optional if you have listings table
+    listing_id      = Column(String, nullable=False)  
     cleanliness     = Column(SmallInteger, nullable=False)
     safety          = Column(SmallInteger, nullable=False)
     parking         = Column(SmallInteger, nullable=False)

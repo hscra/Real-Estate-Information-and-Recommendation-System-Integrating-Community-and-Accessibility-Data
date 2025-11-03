@@ -13,7 +13,6 @@ def upsert_many(db: Session, rows: list[dict]):
     for r in rows:
         obj = db.query(SyntheticOpinion).get(r['opinion_id'])
         if obj:
-            # optional: update text/overall if you want regeneration to overwrite
             for k, v in r.items():
                 setattr(obj, k, v)
         else:
