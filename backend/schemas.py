@@ -44,3 +44,22 @@ class ListingsResponse(BaseModel):
     page: int
     page_size: int
     total: int
+
+
+class PriceImpactRequest(BaseModel):
+    centre_distance_km_change: float | None = 0.0
+    transit_upgrade: bool | None = False
+    transit_access_delta: float | None = None
+    new_poi_delta: int | None = 0
+    # map of amenity key -> distance change in meters (negative = closer)
+    amenity_distance_changes: dict[str, float] | None = None
+
+
+class PriceImpactResponse(BaseModel):
+    listing_id: str
+    base_price: float
+    adjusted_price: float
+    delta_amount: float
+    delta_pct: float
+    used_prediction: bool
+    breakdown: dict[str, float]
