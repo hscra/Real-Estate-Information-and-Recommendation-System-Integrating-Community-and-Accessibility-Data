@@ -5,6 +5,7 @@ import { Results } from "../components/Results";
 import { useListings, type SearchParams } from "../lib/useListings";
 import MapView from "@/components/MapView";
 import { OpinionsPanel } from "@/components/OpinionsPanel";
+import { PriceImpactPanel } from "@/components/PriceImpactPanel";
 import { ListingsResponse, Listing } from "@/lib/types";
 
 type Bounds = { south: number; west: number; north: number; east: number };
@@ -121,8 +122,10 @@ export default function Page() {
 
       {/* --- RIGHT SIDE: OPINIONS PANEL --- */}
       <aside className="col-span-4 border-l overflow-y-auto h-[calc(100vh-2rem)]">
-        {/* Pass the selected listing ID */}
+        {/* Opinions for selected listing */}
         <OpinionsPanel listingId={selectedId ?? undefined} />
+        {/* What-if price impact controls */}
+        <PriceImpactPanel listingId={selectedId ?? undefined} />
       </aside>
     </main>
   );
