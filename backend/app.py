@@ -13,6 +13,7 @@ from backend.tiles import tile_bounds, draw_points_tile, meters_per_pixel
 from .models import Listing
 from sqlalchemy import select, and_, func
 from math import radians, cos, sin, asin, sqrt
+import geoalchemy2
 
 app = FastAPI(title="Property Search API")
 origins =[
@@ -22,6 +23,10 @@ origins =[
 
 app.add_middleware(
     CORSMiddleware,
+    # allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
+    # allow_methods=[""],
+    # allow_headers=[""],
+    # allow_credentials=True,
     allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
