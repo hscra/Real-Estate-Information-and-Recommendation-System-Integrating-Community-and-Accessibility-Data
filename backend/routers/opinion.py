@@ -73,7 +73,7 @@ def get_or_create_opinions(
     return {"listing_id": listing_id, "opinions": combined[:n]}
 
 
-@router.post("/{listing_id}/opinions:regenerate", response_model=OpinionsResponse)
+@router.post("/{listing_id}/opinions", response_model=OpinionsResponse)
 def create_opinion(listing_id: str, req: OpinionCreate, db: Session = Depends(get_db), n: int = Query(3, ge=1, le=10)):
     oid = f"{listing_id}-u-{uuid4().hex[:8]}"
     create_user_opinion(db, {
