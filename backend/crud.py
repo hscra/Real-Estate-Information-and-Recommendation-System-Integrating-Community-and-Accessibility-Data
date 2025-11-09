@@ -241,14 +241,7 @@ def search_listings(
             base, distance_expr = apply_radius_filter(base, fact, lat, lng, radius_m)
 
     
-    # Sorting
-    if sort == "distance_asc" and distance_expr is not None:
-        base = base.order_by(distance_expr.asc())
-    else:
-        order_clause = SORT_MAP.get(sort or "", SORT_MAP["recent"])
-        base = base.order_by(order_clause)
-
-    # Sorting
+    # Sorting: compute once; apply only on the final paginated query
     if sort == "distance_asc" and distance_expr is not None:
         order_clause = distance_expr.asc()
     else:
