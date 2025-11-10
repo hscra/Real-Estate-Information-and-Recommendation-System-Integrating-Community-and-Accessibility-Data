@@ -93,28 +93,3 @@ def create_opinion(listing_id: str, req: OpinionCreate, db: Session = Depends(ge
     # return fresh top-n after insert
     return get_or_create_opinions(listing_id, db, n)
 
-
-# def regenerate(
-#     listing_id: str,
-#     db: Session = Depends(get_db),
-#     n: int = Query(3, ge=1, le=10),
-#     seed: int = 42,
-# ):
-#     df = _load_listing_df(db, listing_id)
-#     if df.empty:
-#         return {"listing_id": listing_id, "opinions": []}
-
-#     gen = synthesize_opinions(df, n_per_listing=n, seed=seed)
-
-
-#     db.execute(delete(SyntheticOpinion).where(SyntheticOpinion.listing_id == listing_id))
-#     db.commit()
-
-#     upsert_many(db, gen.to_dict(orient="records"))
-#     saved = get_opinions_by_listing(db, listing_id)
-#     return {
-#         "listing_id": listing_id,
-#         "opinions": [Opinion.model_validate(o, from_attributes=True) for o in saved],
-#     }
-
-
