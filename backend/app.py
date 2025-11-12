@@ -37,7 +37,7 @@ app.add_middleware(
 print("CONFIG → SCHEMA:", settings.SCHEMA, "| VIEW_OR_TABLE:", settings.VIEW_OR_TABLE)
 
 
-app.include_router(opinions_router)
+app.include_router(opinions_router) # opinions_router registered on the main app, which enables GET /listings/{listing_id}/opinions or POST
 
 @app.get("/health")
 def health():
