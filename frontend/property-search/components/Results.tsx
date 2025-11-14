@@ -149,6 +149,7 @@ export function Results({
   selectionSource?: "card" | "map" | null;
 }) {
   const uniqueItems = useMemo(() => {
+    // memorize the result
     if (!data) return [];
     // keep the last occurrence per listing_id
     return Array.from(
@@ -166,7 +167,9 @@ export function Results({
             key={i.listing_id}
             item={i}
             selected={i.listing_id === selectedId}
-            selectedFromMap={selectionSource === "map" && i.listing_id === selectedId}
+            selectedFromMap={
+              selectionSource === "map" && i.listing_id === selectedId
+            }
             onClick={() => onSelect?.(i.listing_id)}
           />
         ))}
@@ -175,7 +178,7 @@ export function Results({
         <span className="text-sm text-gray-600">
           Total {data.total.toLocaleString()} results
         </span>
-        <div className="inline-flex gap-2">
+        {/* <div className="inline-flex gap-2">
           <button
             className="px-4 py-2 border rounded"
             disabled={data.page <= 1}
@@ -190,7 +193,7 @@ export function Results({
           >
             Next
           </button>
-        </div>
+        </div> */}
       </div>
     </div>
   );
