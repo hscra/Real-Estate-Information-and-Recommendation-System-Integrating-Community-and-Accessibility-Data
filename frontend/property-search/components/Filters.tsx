@@ -45,6 +45,11 @@ export function Filters({ onChange }: { onChange: (p: SearchParams) => void }) {
     { value: "tenement", label: "Tenement" },
   ];
 
+  const TYPE_CITIES = [
+    { value: "", label: "All cities" },
+    { value: "warszawa", label: "warszawa" },
+  ];
+
   // helpers: parse numbers, enforce ≥1, allow empty → undefined
   const parseGe1 = (v: string) => {
     if (v.trim() === "") return undefined;
@@ -58,12 +63,19 @@ export function Filters({ onChange }: { onChange: (p: SearchParams) => void }) {
                  dark:bg-neutral-950/80 dark:border-neutral-800"
     >
       {/* City */}
-      {/* <input
-        className="border rounded px-3 py-2"
-        placeholder="City"
-        value={(local.city as string) ?? ""}
-        onChange={(e) => set("city", e.target.value || undefined)}
-      /> */}
+      {/* <Field label="City">
+        <select
+          className="border rounded px-3 py-2 w-full"
+          value={(local.type as string) ?? ""}
+          onChange={(e) => set("type", e.target.value || undefined)}
+        >
+          {TYPE_CITIES.map((o) => (
+            <option key={o.value || "all"} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </Field> */}
 
       {/* Property type */}
       <Field label="Property type">
@@ -213,7 +225,7 @@ export function Filters({ onChange }: { onChange: (p: SearchParams) => void }) {
       </div>
 
       {/* Color metric */}
-      <Field label="Color markers by">
+      {/* <Field label="Color markers by">
         <select
           className={baseInput}
           value={(local.color_metric as string) ?? "school_distance"}
@@ -226,7 +238,7 @@ export function Filters({ onChange }: { onChange: (p: SearchParams) => void }) {
           <option value="college_distance">College distance</option>
           <option value="pharmacy_distance">Pharmacy distance</option>
         </select>
-      </Field>
+      </Field> */}
     </div>
   );
 }
