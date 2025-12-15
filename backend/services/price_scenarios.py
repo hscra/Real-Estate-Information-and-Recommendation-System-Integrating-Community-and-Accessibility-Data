@@ -35,11 +35,11 @@ def estimate_price_impact(base_price: float, scenario: Scenario) -> dict:
         base_price = 0.0
 
     # Coefficients (fractions)
-    COEF_CENTER_PER_KM = 0.01      # ±1.0% per km farther/closer to center
+    COEF_CENTER_PER_KM = 0.03016      # ±3.0159% per km farther/closer to center.  0.030159 
     COEF_TRANSIT_UPGRADE = 0.03    # +3% for a notable transit upgrade nearby
     COEF_TRANSIT_PER_POINT = 0.015 # ±1.5% per 1-point change on 1–5 scale
-    COEF_POI_PER_UNIT = 0.0001     # +0.01% per additional POI
-    COEF_AMENITY_PER_M = 1e-5      # ±0.001% per meter closer/farther (0.5% per 500m)
+    COEF_POI_PER_UNIT = 0.001901     # +0.1901% per additional POI 0.001901
+    COEF_AMENITY_PER_M = 0.00002358     # ±0.002358% per meter closer/farther (0.5% per 500m) 0.00002358
 
     delta_pct = 0.0
     breakdown: Dict[str, float] = {}
