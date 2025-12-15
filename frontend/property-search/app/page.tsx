@@ -9,6 +9,7 @@ import { PriceImpactPanel } from "@/components/PriceImpactPanel";
 import { ListingsResponse, Listing } from "@/lib/types";
 
 type Bounds = { south: number; west: number; north: number; east: number };
+
 const DEFAULT_KRAKOW: Bounds = {
   south: 49.966,
   west: 19.768,
