@@ -51,10 +51,10 @@ From `frontend/property-search/`:
 - `GET /listings/{listing_id}/history`
 - `GET /listings/{listing_id}/opinions`
 - `POST /listings/{listing_id}/price-impact` (scenario-based price adjustment)
+<!--
 
 ## Tests / Validation
 
 - Unit tests (no real DB): `python -m pytest backend/tests/test_app.py`
 - Opt-in API perf checks (hits a running backend): `RUN_API_BENCH=1 python -m pytest backend/tests/test_ap.py -s`
-- Opt-in price impact scenario sweep: `RUN_SCENARIO_SWEEP=1 python -m pytest backend/tests/test_ap.py -k scenario -s`
-
+- Opt-in price impact scenario sweep: `RUN_SCENARIO_SWEEP=1 python -m pytest backend/tests/test_ap.py -k scenario -s` -->
