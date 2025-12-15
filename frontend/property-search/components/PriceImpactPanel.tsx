@@ -1,17 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type {
-  PriceImpactRequest,
-  PriceImpactResponse,
-} from "@/lib/types";
+import type { PriceImpactRequest, PriceImpactResponse } from "@/lib/types";
 
 const defaultScenario: PriceImpactRequest = {
   centre_distance_km_change: 0,
   transit_upgrade: false,
   transit_access_delta: 0,
   new_poi_delta: 0,
-  amenity_distance_changes: { school: 0, pharmacy: 0 },
+  amenity_distance_changes: undefined,
 };
 
 export function PriceImpactPanel({ listingId }: { listingId?: string }) {
@@ -19,6 +16,7 @@ export function PriceImpactPanel({ listingId }: { listingId?: string }) {
   const [result, setResult] = useState<PriceImpactResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [editAmenities, setEditAmenities] = useState(false);
 
   const backend =
     process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
@@ -27,6 +25,12 @@ export function PriceImpactPanel({ listingId }: { listingId?: string }) {
     if (!result) return null;
     return (result.delta_pct * 100).toFixed(2);
   }, [result]);
+
+  const hasAmenityChanges = useMemo(() => {
+    const m = scenario.amenity_distance_changes;
+    if (!m) return false;
+    return Object.values(m).some((v) => Number(v || 0) !== 0);
+  }, [scenario.amenity_distance_changes]);
 
   async function run() {
     if (!listingId) return;
@@ -64,7 +68,7 @@ export function PriceImpactPanel({ listingId }: { listingId?: string }) {
     <div className="p-4 border-t">
       <h3 className="text-lg font-semibold mb-2">What‑If Price Impact</h3>
       <div className="grid grid-cols-2 gap-3 text-sm">
-        <Labeled label="Δ center distance (km)">
+        {/* <Labeled label="Δ center distance (km)">
           <input
             type="number"
             step={0.1}
@@ -77,7 +81,7 @@ export function PriceImpactPanel({ listingId }: { listingId?: string }) {
               }))
             }
           />
-        </Labeled>
+        </Labeled> */}
         <Labeled label="Transit upgrade">
           <input
             type="checkbox"
@@ -118,30 +122,53 @@ export function PriceImpactPanel({ listingId }: { listingId?: string }) {
       </div>
 
       <div className="mt-3">
-        <div className="grid grid-cols-3 gap-2">
-          {[
-            ["school", "School Δm"],
-            ["pharmacy", "Pharmacy Δm"],
-            ["restaurant", "Restaurant Δm"],
-          ].map(([k, label]) => (
-            <Labeled key={k} label={label}>
-              <input
-                type="number"
-                className="border rounded px-2 py-1 w-full"
-                value={scenario.amenity_distance_changes?.[k] ?? 0}
-                onChange={(e) =>
-                  setScenario((s) => ({
-                    ...s,
-                    amenity_distance_changes: {
-                      ...(s.amenity_distance_changes || {}),
-                      [k]: Number(e.target.value || 0),
-                    },
-                  }))
-                }
-              />
-            </Labeled>
-          ))}
-        </div>
+        {/* <Labeled label="Adjust amenity distances">
+          <input
+            type="checkbox"
+            checked={editAmenities || hasAmenityChanges}
+            onChange={(e) => {
+              const on = e.target.checked;
+              setEditAmenities(on);
+              setScenario((s) => ({
+                ...s,
+                amenity_distance_changes: on
+                  ? s.amenity_distance_changes ?? {
+                      school: 0,
+                      pharmacy: 0,
+                      restaurant: 0,
+                    }
+                  : undefined,
+              }));
+            }}
+          />
+        </Labeled> */}
+
+        {(editAmenities || hasAmenityChanges) && (
+          <div className="grid grid-cols-3 gap-2 mt-2">
+            {[
+              ["school", "School Δm"],
+              ["pharmacy", "Pharmacy Δm"],
+              ["restaurant", "Restaurant Δm"],
+            ].map(([k, label]) => (
+              <Labeled key={k} label={label}>
+                <input
+                  type="number"
+                  className="border rounded px-2 py-1 w-full"
+                  value={scenario.amenity_distance_changes?.[k] ?? 0}
+                  onChange={(e) =>
+                    setScenario((s) => ({
+                      ...s,
+                      amenity_distance_changes: {
+                        ...(s.amenity_distance_changes || {}),
+                        [k]: Number(e.target.value || 0),
+                      },
+                    }))
+                  }
+                />
+              </Labeled>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="mt-3 flex gap-2">
@@ -158,6 +185,7 @@ export function PriceImpactPanel({ listingId }: { listingId?: string }) {
             setScenario(defaultScenario);
             setResult(null);
             setErr(null);
+            setEditAmenities(false);
           }}
         >
           Reset
@@ -169,25 +197,33 @@ export function PriceImpactPanel({ listingId }: { listingId?: string }) {
       {result && (
         <div className="mt-3 rounded-xl border p-3 bg-white">
           <div className="text-sm text-gray-700">
-            Base: <b>{Math.round(result.base_price).toLocaleString("pl-PL")}</b> PLN
+            Base: <b>{Math.round(result.base_price).toLocaleString("pl-PL")}</b>{" "}
+            PLN
           </div>
           <div className="text-sm text-gray-700">
-            Adjusted: <b>{Math.round(result.adjusted_price).toLocaleString("pl-PL")}</b> PLN
+            Adjusted:{" "}
+            <b>{Math.round(result.adjusted_price).toLocaleString("pl-PL")}</b>{" "}
+            PLN
           </div>
-          <div className="text-sm">
-            Change: <b>{Math.round(result.delta_amount).toLocaleString("pl-PL")}</b> PLN ({pct}%)
+          <div className="text-sm text-gray-700">
+            Change:{" "}
+            <b>{Math.round(result.delta_amount).toLocaleString("pl-PL")}</b> PLN
+            ({pct}%)
           </div>
           <div className="mt-2 text-xs text-gray-600">
-            Used {result.used_prediction ? "prediction" : "listing price"} as base
+            Used {result.used_prediction ? "prediction" : "listing price"} as
+            base
           </div>
           {result.breakdown && Object.keys(result.breakdown).length > 0 && (
             <div className="mt-2">
-              <div className="font-medium text-sm">Breakdown</div>
+              <div className="font-medium text-sm text-gray-700">Breakdown</div>
               <ul className="mt-1 text-sm space-y-1">
                 {Object.entries(result.breakdown).map(([k, v]) => (
                   <li key={k} className="flex justify-between">
                     <span className="text-gray-700">{k}</span>
-                    <span className={v >= 0 ? "text-green-700" : "text-red-700"}>
+                    <span
+                      className={v >= 0 ? "text-green-700" : "text-red-700"}
+                    >
                       {(v * 100).toFixed(2)}%
                     </span>
                   </li>
@@ -201,7 +237,13 @@ export function PriceImpactPanel({ listingId }: { listingId?: string }) {
   );
 }
 
-function Labeled({ label, children }: { label: string; children: React.ReactNode }) {
+function Labeled({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <label className="flex flex-col gap-1">
       <span className="text-xs text-gray-600">{label}</span>
@@ -209,4 +251,3 @@ function Labeled({ label, children }: { label: string; children: React.ReactNode
     </label>
   );
 }
-
