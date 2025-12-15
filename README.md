@@ -51,10 +51,25 @@ From `frontend/property-search/`:
 - `GET /listings/{listing_id}/history`
 - `GET /listings/{listing_id}/opinions`
 - `POST /listings/{listing_id}/price-impact` (scenario-based price adjustment)
-<!--
 
 ## Tests / Validation
 
 - Unit tests (no real DB): `python -m pytest backend/tests/test_app.py`
 - Opt-in API perf checks (hits a running backend): `RUN_API_BENCH=1 python -m pytest backend/tests/test_ap.py -s`
-- Opt-in price impact scenario sweep: `RUN_SCENARIO_SWEEP=1 python -m pytest backend/tests/test_ap.py -k scenario -s` -->
+- Opt-in price impact scenario sweep: `RUN_SCENARIO_SWEEP=1 python -m pytest backend/tests/test_ap.py -k scenario -s`
+
+## Run With Docker (recommended for sharing)
+
+This repo includes a `docker-compose.yml` that starts:
+
+- Postgres + PostGIS (`db`)
+- FastAPI backend (`backend`) on `http://localhost:8000`
+- Next.js frontend (`frontend`) on `http://localhost:3000`
+
+Steps:
+
+- Install Docker Desktop (or Docker Engine + Compose)
+- From repo root: `docker compose up --build`
+- Open: `http://localhost:3000`
+
+Note: the database container starts empty. To see real listings, you must load your schema/data into the `db` service (SQL import, dump restore, or your ETL).
