@@ -52,18 +52,11 @@ Note: the UI calls the backend through Next.js API routes under `/api/*` (same-o
 
 ## Key API Endpoints
 
-- `GET /health`
 - `GET /listings` (requires bbox params: `south`, `west`, `north`, `east`)
 - `GET /listings/{listing_id}/history`
 - `GET /listings/{listing_id}/opinions`
 - `POST /listings/{listing_id}/price-impact` (scenario-based price adjustment)
 - `GET /tiles/points/{z}/{x}/{y}.png` (PNG overlay tiles; accepts the same filter query params as `/listings`)
-
-## Tests / Validation
-
-- Unit tests (no real DB): `python -m pytest backend/tests/test_app.py`
-- Opt-in API perf checks (hits a running backend): `RUN_API_BENCH=1 python -m pytest backend/tests/test_ap.py -s`
-- Opt-in price impact scenario sweep: `RUN_SCENARIO_SWEEP=1 python -m pytest backend/tests/test_ap.py -k scenario -s`
 
 ## Run With Docker (recommended for sharing)
 
