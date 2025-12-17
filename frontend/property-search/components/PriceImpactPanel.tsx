@@ -18,9 +18,6 @@ export function PriceImpactPanel({ listingId }: { listingId?: string }) {
   const [err, setErr] = useState<string | null>(null);
   const [editAmenities, setEditAmenities] = useState(false);
 
-  const backend =
-    process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
-
   const pct = useMemo(() => {
     if (!result) return null;
     return (result.delta_pct * 100).toFixed(2);
@@ -35,11 +32,11 @@ export function PriceImpactPanel({ listingId }: { listingId?: string }) {
   async function run() {
     if (!listingId) return;
     setLoading(true);
-    setErr(null);
-    setResult(null);
+      setErr(null);
+      setResult(null);
     try {
       const res = await fetch(
-        `${backend}/listings/${encodeURIComponent(listingId)}/price-impact`,
+        `/api/listings/${encodeURIComponent(listingId)}/price-impact`,
         {
           method: "POST",
           headers: { "content-type": "application/json" },
