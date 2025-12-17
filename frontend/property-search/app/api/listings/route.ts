@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
-  const backend = process.env.BACKEND_URL || "http://localhost:8000";
+  const backend =
+    process.env.BACKEND_URL ||
+    process.env.NEXT_PUBLIC_BACKEND_URL ||
+    "http://backend:8000";
   const inUrl = new URL(req.url);
 
   const q = inUrl.searchParams;
@@ -32,9 +35,6 @@ export async function GET(req: NextRequest) {
     out.searchParams.set("lon_max", east);
     out.searchParams.set("lon_min", west);
   }
-
-  // Helpful server-side logging (shows in Next server console)
-  // console.log("[proxy] ->", out.toString());
 
   const res = await fetch(out.toString(), {
     headers: { Accept: "application/json" },
