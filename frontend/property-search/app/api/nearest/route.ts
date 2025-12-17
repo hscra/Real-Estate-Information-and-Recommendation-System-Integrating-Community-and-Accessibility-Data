@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
-  const backend = process.env.BACKEND_URL || "http://localhost:8000";
+  const backend =
+    process.env.BACKEND_URL ||
+    process.env.NEXT_PUBLIC_BACKEND_URL ||
+    "http://backend:8000";
   const inUrl = new URL(req.url);
 
   const out = new URL(`${backend}/nearest`);
