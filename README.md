@@ -13,6 +13,7 @@ FastAPI backend + Postgres/PostGIS + Next.js frontend for searching property lis
 - Python 3.10+ (recommended) and `pip`
 - Node.js 18+ and `npm`
 - Postgres (optionally with PostGIS; recommended if `USE_POSTGIS=true`)
+- Google Maps API key (for the map UI)
 
 ## Quick Start
 
@@ -41,8 +42,13 @@ From repo root:
 From `frontend/property-search/`:
 
 - Install: `npm install`
-- Run: `NEXT_PUBLIC_BACKEND_URL=http://localhost:8000 npm run dev`
+- Create `frontend/property-search/.env.local` with:
+  - `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=...`
+  - `BACKEND_URL=http://localhost:8000` (used by Next.js API routes to reach the backend)
+- Run: `npm run dev`
 - Open: `http://localhost:3000`
+
+Note: the UI calls the backend through Next.js API routes under `/api/*` (same-origin), so you generally should not set `NEXT_PUBLIC_API_BASE` unless you know what you’re doing.
 
 ## Key API Endpoints
 
@@ -51,6 +57,7 @@ From `frontend/property-search/`:
 - `GET /listings/{listing_id}/history`
 - `GET /listings/{listing_id}/opinions`
 - `POST /listings/{listing_id}/price-impact` (scenario-based price adjustment)
+- `GET /tiles/points/{z}/{x}/{y}.png` (PNG overlay tiles; accepts the same filter query params as `/listings`)
 
 ## Tests / Validation
 
@@ -72,4 +79,7 @@ Steps:
 - From repo root: `docker compose up --build`
 - Open: `http://localhost:3000`
 
-Note: the database container starts empty. To see real listings, you must load your schema/data into the `db` service (SQL import, dump restore, or your ETL).
+Notes:
+
+- If you change frontend environment variables, rebuild (`docker compose up --build`) because `NEXT_PUBLIC_*` values are baked at build time.
+- The database container initializes from `backend/db/init/` on first run; the data volume persists in `db_data`.
