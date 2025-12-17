@@ -58,7 +58,7 @@ Note: the UI calls the backend through Next.js API routes under `/api/*` (same-o
 - `POST /listings/{listing_id}/price-impact` (scenario-based price adjustment)
 - `GET /tiles/points/{z}/{x}/{y}.png` (PNG overlay tiles; accepts the same filter query params as `/listings`)
 
-## Run With Docker (recommended for sharing)
+## Run With Docker
 
 This repo includes a `docker-compose.yml` that starts:
 
