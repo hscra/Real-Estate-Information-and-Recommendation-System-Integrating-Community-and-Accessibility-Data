@@ -101,6 +101,7 @@ export default function Page() {
               setSelectionSource("map");
             }}
             selectedId={selectedId}
+            tileFilters={params}
             // defaultCenter / defaultZoom / colorMetric as you like
           />
         </div>
