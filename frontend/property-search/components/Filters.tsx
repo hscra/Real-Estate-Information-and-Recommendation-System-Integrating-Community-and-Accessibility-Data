@@ -82,7 +82,17 @@ export function Filters({ onChange }: { onChange: (p: SearchParams) => void }) {
         <select
           className="border rounded px-3 py-2 w-full"
           value={(local.type as string) ?? ""}
-          onChange={(e) => set("type", e.target.value || undefined)}
+          onChange={(e) =>
+            set(
+              "type",
+              (e.target.value === "" ? undefined : e.target.value) as
+                | "apartmentBuilding"
+                | "blockOfFlats"
+                | "tenement"
+                | undefined
+            )
+          }
+          // onChange={(e) => set("type", e.target.value || undefined)}
         >
           {TYPE_OPTIONS.map((o) => (
             <option key={o.value || "all"} value={o.value}>
