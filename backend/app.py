@@ -5,6 +5,7 @@ from typing import Optional, Annotated
 from .db import get_db
 from sqlalchemy.orm import Session
 from .crud import search_listings,fetch_price_histories, reflect_fact_table
+from .crud import build_filters, MIN_PRICE_FLOOR
 from .schemas import ListingsResponse, ListingOut, PriceImpactRequest, PriceImpactResponse
 from .services.prediction import get_predictions
 from backend.routers.opinion import router as opinions_router
@@ -156,16 +157,65 @@ def get_price_history(listing_id: str, db: Session = Depends(get_db)):
 
 #add PNG tile endpoints
 @app.get("/tiles/points/{z}/{x}/{y}.png")
-def points_tile(z: int, x: int, y: int, db: Session = Depends(get_db)) -> Response:
+def points_tile(
+    z: int,
+    x: int,
+    y: int,
+    city: Optional[str] = None,
+    type: Optional[str] = None,
+    min_m2: Optional[float] = None,
+    max_m2: Optional[float] = None,
+    min_price: Optional[float] = None,
+    max_price: Optional[float] = None,
+    rooms: Optional[int] = None,
+    amenities: Optional[str] = Query(
+        None, description="comma-separated: parking,balcony,elevator,security,storage"
+    ),
+    max_school: Optional[int] = Query(None, ge=1),
+    max_clinic: Optional[int] = Query(None, ge=1),
+    max_post_office: Optional[int] = Query(None, ge=1),
+    max_restaurant: Optional[int] = Query(None, ge=1),
+    max_college: Optional[int] = Query(None, ge=1),
+    max_pharmacy: Optional[int] = Query(None, ge=1),
+    max_kindergarten: Optional[int] = Query(None, ge=1),
+    db: Session = Depends(get_db),
+) -> Response:
     south, west, north, east = tile_bounds(z, x, y)
+
+    a_list = [a.strip() for a in amenities.split(",")] if amenities else []
+
+    def m_to_km(v: float | None) -> float | None:
+        return (float(v) / 1000.0) if v is not None else None
+
+    effective_min_price = max(MIN_PRICE_FLOOR, float(min_price or 0.0))
+    attr_filters = build_filters(
+        city=city,
+        type_=type,
+        min_m2=min_m2,
+        max_m2=max_m2,
+        min_price=effective_min_price,
+        max_price=max_price,
+        rooms=rooms,
+        amenities=a_list,
+        max_school=m_to_km(max_school),
+        max_clinic=m_to_km(max_clinic),
+        max_post_office=m_to_km(max_post_office),
+        max_restaurant=m_to_km(max_restaurant),
+        max_college=m_to_km(max_college),
+        max_pharmacy=m_to_km(max_pharmacy),
+        max_kindergarten=m_to_km(max_kindergarten),
+    )
+
+    conditions = [
+        Listing.latitude.between(south, north),
+        Listing.longitude.between(west, east),
+        Listing.price >= effective_min_price,
+    ]
+    if attr_filters is not None:
+        conditions.append(attr_filters)
+
     rows = db.execute(
-        select(Listing.latitude, Listing.longitude).where(
-            and_(
-                Listing.latitude.between(south, north),
-                Listing.longitude.between(west, east),
-                Listing.price >= 10000.0,  # keep your global MIN_PRICE_FLOOR if needed
-            )
-        )
+        select(Listing.latitude, Listing.longitude).where(and_(*conditions))
     ).all()
     pts = [(lat, lon) for (lat, lon) in rows if lat is not None and lon is not None]
     png = draw_points_tile(pts, z, x, y)
