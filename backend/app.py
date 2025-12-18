@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends, Query, Response
 import math
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Optional, Annotated
+from typing import Optional, Annotated, Literal
 from .db import get_db
 from sqlalchemy.orm import Session
 from .crud import search_listings,fetch_price_histories, reflect_fact_table
@@ -308,30 +308,27 @@ def price_impact(
 ):
     """Estimate price change if neighborhood accessibility/infrastructure changes.
 
-    Chooses base price from predictions when available, otherwise the current listing price.
+    Uses the current listing price per m² as the base when possible (price / square_m),
+    otherwise falls back to the listing's total price.
     Applies a transparent elasticity model and returns an adjusted price with breakdown.
     """
     # Load base listing
     row = db.query(Listing).filter(Listing.listing_id == listing_id).first()
-    base_price = float(getattr(row, "price", 0.0) or 0.0)
+    price = float(getattr(row, "price", 0.0) or 0.0)
+    square_m = getattr(row, "square_m", None)
+    if square_m is not None:
+        try:
+            square_m = float(square_m)
+        except Exception:
+            square_m = None
 
-    # Prefer prediction if available
     used_prediction = False
-    try:
-        pmap = get_predictions([listing_id])
-        preds = pmap.get(listing_id) or {}
-        # choose an available model in a deterministic order
-        for k in ("hgbr", "svm", "nn"):
-            v = preds.get(k)
-            try:
-                if v is not None:
-                    base_price = float(v)
-                    used_prediction = True
-                    break
-            except Exception:
-                continue
-    except Exception:
-        pass
+    if square_m and square_m > 0 and price > 0:
+        base_price = price / square_m
+        unit: Literal["pln_per_m2", "pln_total"] = "pln_per_m2"
+    else:
+        base_price = price
+        unit = "pln_total"
 
     # Build scenario and estimate
     from backend.services.price_scenarios import Scenario, estimate_price_impact
@@ -352,5 +349,6 @@ def price_impact(
         delta_amount=result["delta_amount"],
         delta_pct=result["delta_pct"],
         used_prediction=used_prediction,
+        unit=unit,
         breakdown=result["breakdown"],
     )
