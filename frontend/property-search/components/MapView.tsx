@@ -259,10 +259,8 @@ export default function MapView({
   const handleIdle = useCallback(() => {
     if (!mapRef.current) return;
 
-    if (suppressNextIdleRef.current) {
-      suppressNextIdleRef.current = false;
-      return;
-    }
+    const suppressed = suppressNextIdleRef.current;
+    if (suppressed) suppressNextIdleRef.current = false;
 
     const map = mapRef.current;
 
@@ -273,6 +271,10 @@ export default function MapView({
       const z = map.getZoom?.() ?? defaultZoom;
       circle.setRadius(metersPerPixel(center.lat(), z) * 10);
     }
+
+    // Programmatic pan/zoom triggers an idle event too; suppress only bounds refresh,
+    // not the selection-circle re-sizing above.
+    if (suppressed) return;
 
     if (!onBoundsChanged) return;
 
