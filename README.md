@@ -2,6 +2,10 @@
 
 FastAPI backend + Postgres/PostGIS + Next.js frontend for searching property listings, viewing price history/predictions, and running a “what‑if” price impact scenario.
 
+## Live Demo
+
+![Live Demo](demo/demo.gif)
+
 ## Repo Structure
 
 - `backend/` FastAPI API + SQLAlchemy + services (predictions, opinions, price impact)
