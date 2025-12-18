@@ -1,5 +1,5 @@
-from pydantic import BaseModel, ConfigDict 
-from typing import Optional, List
+from pydantic import BaseModel, ConfigDict
+from typing import Optional, List, Literal
 
 class PricePoint(BaseModel):
     date: str
@@ -62,4 +62,5 @@ class PriceImpactResponse(BaseModel):
     delta_amount: float
     delta_pct: float
     used_prediction: bool
+    unit: Literal["pln_per_m2", "pln_total"] = "pln_per_m2"
     breakdown: dict[str, float]

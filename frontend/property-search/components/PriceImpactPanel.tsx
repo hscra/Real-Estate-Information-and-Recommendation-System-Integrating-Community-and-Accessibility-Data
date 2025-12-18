@@ -18,6 +18,18 @@ export function PriceImpactPanel({ listingId }: { listingId?: string }) {
   const [err, setErr] = useState<string | null>(null);
   const [editAmenities, setEditAmenities] = useState(false);
 
+  const unitLabel = useMemo(() => {
+    if (result?.unit === "pln_per_m2") return "PLN/m²";
+    if (result?.unit === "pln_total") return "PLN";
+    return "PLN";
+  }, [result?.unit]);
+
+  const baseLabel = useMemo(() => {
+    if (result?.unit === "pln_per_m2") return "listing price per m²";
+    if (result?.unit === "pln_total") return "listing total price";
+    return result?.used_prediction ? "prediction" : "listing price";
+  }, [result?.unit, result?.used_prediction]);
+
   const pct = useMemo(() => {
     if (!result) return null;
     return (result.delta_pct * 100).toFixed(2);
@@ -46,8 +58,14 @@ export function PriceImpactPanel({ listingId }: { listingId?: string }) {
       if (!res.ok) throw new Error(await res.text());
       const data = (await res.json()) as PriceImpactResponse;
       setResult(data);
-    } catch (e: any) {
-      setErr(e?.message || "Failed to compute price impact");
+    } catch (e: unknown) {
+      const message =
+        e instanceof Error
+          ? e.message
+          : typeof e === "string"
+          ? e
+          : "Failed to compute price impact";
+      setErr(message);
     } finally {
       setLoading(false);
     }
@@ -195,21 +213,21 @@ export function PriceImpactPanel({ listingId }: { listingId?: string }) {
         <div className="mt-3 rounded-xl border p-3 bg-white">
           <div className="text-sm text-gray-700">
             Base: <b>{Math.round(result.base_price).toLocaleString("pl-PL")}</b>{" "}
-            PLN
+            {unitLabel}
           </div>
           <div className="text-sm text-gray-700">
             Adjusted:{" "}
             <b>{Math.round(result.adjusted_price).toLocaleString("pl-PL")}</b>{" "}
-            PLN
+            {unitLabel}
           </div>
           <div className="text-sm text-gray-700">
             Change:{" "}
-            <b>{Math.round(result.delta_amount).toLocaleString("pl-PL")}</b> PLN
+            <b>{Math.round(result.delta_amount).toLocaleString("pl-PL")}</b>{" "}
+            {unitLabel}
             ({pct}%)
           </div>
           <div className="mt-2 text-xs text-gray-600">
-            Used {result.used_prediction ? "prediction" : "listing price"} as
-            base
+            Base uses {baseLabel}
           </div>
           {result.breakdown && Object.keys(result.breakdown).length > 0 && (
             <div className="mt-2">

@@ -73,5 +73,6 @@ export type PriceImpactResponse = {
   delta_amount: number;
   delta_pct: number; // fraction, e.g. 0.025 = +2.5%
   used_prediction: boolean;
+  unit?: "pln_per_m2" | "pln_total";
   breakdown: Record<string, number>; // factor -> percent (fraction)
 };
